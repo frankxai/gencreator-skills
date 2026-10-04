@@ -14,6 +14,8 @@ jobs:
         with:
           node-version: '24'
       - run: python3 -m unittest discover -s plugins/gencreator-native/tests -v
+      - run: node --test plugins/gencreator-native/tests/operations.test.mjs
+      - run: node plugins/gencreator-native/scripts/verify-projections.mjs
       - run: node plugins/gencreator-native/skills/gencreator-launch/scripts/launch.mjs doctor
       - run: node plugins/gencreator-native/skills/gencreator-launch/scripts/launch.mjs compile plugins/gencreator-native/skills/gencreator-launch/examples/launch.json /tmp/gencreator-launch-candidate
       - run: node plugins/gencreator-native/skills/gencreator-launch/scripts/launch.mjs verify /tmp/gencreator-launch-candidate

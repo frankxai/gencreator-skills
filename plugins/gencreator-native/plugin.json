@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "gencreator-native",
-  "version": "0.1.0-alpha.1",
-  "description": "Portable source-to-edition and launch workflows with local execution.",
+  "version": "0.2.0-alpha.1",
+  "description": "Portable production, launch and multi-brand operations workflows with local execution.",
   "author": {
     "name": "GenCreator",
     "url": "https://gencreator.ai"
@@ -14,8 +14,8 @@
     "com.openai": {
       "interface": {
         "displayName": "GenCreator",
-        "shortDescription": "Create a source-linked content week and launch packet.",
-        "longDescription": "Local source-to-edition production and launch workflows. Includes exact evidence and revision checks, editable drafts, and a dependency-free launch runtime. Optional remote MCP uses the existing GenCreator public endpoint; managed workspace access is not available until OAuth/readiness passes.",
+        "shortDescription": "Plan, create and review",
+        "longDescription": "Three local workflows: source-to-edition production, launch packets and creator operations. Includes evidence and revision checks, editable drafts, multi-brand job planning and supplied subscription audits. Optional remote MCP uses the existing GenCreator public endpoint; verify its tool list. Managed workspace access requires OAuth/readiness. This plugin does not start agents or publish.",
         "developerName": "GenCreator",
         "category": "Productivity",
         "capabilities": [
