@@ -1,42 +1,42 @@
 {
   "schema": "gencreator.source-projection.v1",
   "sourceRepository": "https://github.com/frankxai/gencreator.ai",
-  "sourceCommit": "8db234aa70c49ad7b0315d3e70669aa71c4fe4b9",
-  "operationsVersion": "0.1.0",
+  "sourceCommit": "10dd3f59f17d9eb91c3564507fb6ef09d1416277",
+  "operationsVersion": "0.2.0",
   "files": [
     {
       "path": "skills/gencreator-operations/scripts/operations-core.mjs",
       "sourcePath": "packages/gencreator/scripts/operations-core.mjs",
-      "sourceSha256": "d3a1fbbf1857105cf151b3d9e69999159fe28b4d22392e891f6f945c8e1274ac",
-      "sha256": "d3a1fbbf1857105cf151b3d9e69999159fe28b4d22392e891f6f945c8e1274ac",
+      "sourceSha256": "8a12b2ce16fbec99b51c99c30f2ed58972bf531e2b870f9ec47f55c8f92602cb",
+      "sha256": "8a12b2ce16fbec99b51c99c30f2ed58972bf531e2b870f9ec47f55c8f92602cb",
       "transform": "none"
     },
     {
       "path": "skills/gencreator-operations/scripts/operations.mjs",
       "sourcePath": "packages/gencreator/scripts/operations.mjs",
-      "sourceSha256": "ea84fdae8753256fae297c41001df70fdff2bc924418458aaf313379f436a4b9",
-      "sha256": "ea84fdae8753256fae297c41001df70fdff2bc924418458aaf313379f436a4b9",
+      "sourceSha256": "74a3785899c93d7296a83e95b2af6eb26f53130bbc1ffea9b258d823a2ad4310",
+      "sha256": "74a3785899c93d7296a83e95b2af6eb26f53130bbc1ffea9b258d823a2ad4310",
       "transform": "none"
     },
     {
       "path": "skills/gencreator-operations/references/operations-contract.md",
       "sourcePath": "packages/gencreator/references/operations-contract.md",
-      "sourceSha256": "9bc00dc4e7d6737564dca7e693f4abad6751373af3111197ee893eba9046fa7f",
-      "sha256": "9bc00dc4e7d6737564dca7e693f4abad6751373af3111197ee893eba9046fa7f",
+      "sourceSha256": "5be3b4d3d25b6ad74c31cc73d2a0bd7652f00daf2d6ad69dfb7bdfe04423f949",
+      "sha256": "5be3b4d3d25b6ad74c31cc73d2a0bd7652f00daf2d6ad69dfb7bdfe04423f949",
       "transform": "none"
     },
     {
       "path": "skills/gencreator-operations/SKILL.md",
       "sourcePath": "packages/gencreator/skills/gencreator-operations/SKILL.md",
-      "sourceSha256": "8093cdcf5380337e7965ebbba6f3a46e38f6d96e395890ab9704cb60dc343637",
-      "sha256": "ac84022734d26b01dae9c5cfbf0187e5f29a3fda8c61b4810fa9dce1f74ffc77",
+      "sourceSha256": "a4a75737ed1787e67c136b79c46830562528d884d016ea29001c04b2f268f388",
+      "sha256": "afb5544f38a2f67e2e4e352622571e70da18541a645c9099413c374981527618",
       "transform": "relative script/reference paths"
     },
     {
       "path": "tests/operations.test.mjs",
       "sourcePath": "scripts/tests/creator-operations.test.mjs",
-      "sourceSha256": "c22afabacf92944086da3bd2a9dcc82eb43e80a537cebed1f511f0568bdcda2a",
-      "sha256": "1b456489423f8b2d27b337a3c261efb89aef2913fc56b47e746f45c5d29cbd5c",
+      "sourceSha256": "8a3efa2c4a425fb8e93cf6876d69eaffa52f717cde8422abf16a159aaa6491b2",
+      "sha256": "eaead2d7456b2d01291243293d60afab8ede7fe12e2f92433ad33273b362bf08",
       "transform": "relative core/CLI paths"
     }
   ]

@@ -1,6 +1,6 @@
 ---
 name: gencreator-operations
-description: Prepare a creator's multi-brand research, content, publishing, agent and SaaS operating plan. Use for channel ownership, source and IP lineage, tool consolidation, subscription costs and renewal reviews. Runs locally without inference keys; never implies connected accounts or permission to publish.
+description: Prepare a creator's multi-brand research, content, publishing, agent and SaaS operating plan. Use for stack selection, owned subscriptions, brand quotas, workflow bindings, source and IP lineage, channel ownership and renewal reviews. Runs locally without inference keys; never implies connected accounts or permission to publish.
 ---
 
 # GenCreator operations
@@ -16,11 +16,20 @@ Run the dependency-free engine from this skill directory:
 ```bash
 node scripts/operations.mjs plan /absolute/path/brands.json /absolute/path/operations-plan.json
 node scripts/operations.mjs audit /absolute/path/subscriptions.json /absolute/path/subscription-audit.json
+node scripts/operations.mjs stack /absolute/path/stack-input.json /absolute/path/creator-stack.json
 ```
 
 The CLI refuses to overwrite an existing output. Preserve earlier plans and give each revision a new path. Local files contain supplied records; keep private billing and source data out of public repositories and publish only an intentionally selected projection. Save the final user-facing packet using the host's persistent file workflow.
 
-Read [the contract](references/operations-contract.md) for exact input fields. When these public tools are actually exposed by the connected server, use `gencreator_plan_operations` or `gencreator_audit_subscriptions` with the same input. A repository change does not make the tools available on the production endpoint. Use the local engine when the remote version does not expose them.
+Read [the contract](references/operations-contract.md) for exact input fields. When these public tools are actually exposed by the connected server, use `gencreator_plan_operations`, `gencreator_audit_subscriptions` or `gencreator_design_stack` with the same input. A repository change does not make the tools available on the production endpoint. Use the local engine when the remote version does not expose them.
+
+## Design the creator's stack
+
+Treat CreatorStack as the creator-owned inventory, requirements, tool decisions and workflow bindings alongside the source-bound CreatorPack. Start with supplied subscriptions and actual brand requirements, not a list of vendors to buy. Record entitlement capacity by unit and period, brand scope, available access mode and dated evidence. UI access does not imply API access. Unknown quota is not unlimited capacity. Record an explicit shared quota pool when different capabilities consume one credit balance; if pooling is unknown, retain unknown capacity.
+
+Reuse suitable owned tools first; examine included entitlements and free options before proposing an additional license. The engine compares up to twelve supplied offers under monthly and upfront limits, counting a shared subscription once and allocating quota across brands. Its deterministic allocation produces a cost proposal. It leaves vendor quality to editorial judgment and does not guarantee a global optimum. Report omitted usage, tax and FX. Unknown current costs block additional paid proposals; a supplied empty ledger is not account discovery. Read current primary provider sources before supplying quotes, limits or feature claims; preserve the evidence reference and check date.
+
+Bind each workflow step to a requirement, brand, agent role, dependency and intended effect. The compiler rejects missing dependencies, cycles, scope mismatches and ambiguous publishing ownership. Its graph is prepared, not executed. Show unresolved gaps and separate owner purchase decisions, verified connections, source rights and exact revision publication approval. Keep credentials in the authenticated connection service, never in the stack packet.
 
 ## Apply editorial judgment
 

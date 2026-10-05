@@ -1,5 +1,5 @@
 /** GenCreator operations planning. Supplied records only; no I/O or inference. */
-export const operationsVersion = '0.1.0'
+export const operationsVersion = '0.2.0'
 
 /** Reject ambiguous JSON before a duplicate field can silently replace billing evidence. */
 export function parseOperationsJson(source) {
@@ -199,12 +199,209 @@ export function auditCreatorSubscriptions(input) {
   }
 }
 
+const capabilities = ['research', 'science_review', 'writing', 'image', 'video', 'audio', 'design', 'asset_storage', 'ip_registry', 'publishing', 'analytics', 'crm', 'email', 'commerce', 'community', 'workflow_runtime']
+const accessModes = ['local', 'native', 'api', 'mcp', 'manual']
+const quantity = { type: 'integer', minimum: 0, maximum: 1000000000000 }
+const money = { type: 'number', minimum: 0, maximum: 100000000 }
+const currency = { type: 'string', pattern: '^[A-Z]{3}$' }
+const brandIds = { type: 'array', minItems: 1, maxItems: 12, uniqueItems: true, items: id }
+const period = { enum: ['day', 'month', 'run', 'total'] }
+const coverage = { type: 'array', minItems: 1, maxItems: 36, items: object({ capability: { enum: capabilities }, unit: text(40), period, capacity: { anyOf: [quantity, { type: 'null' }] }, quotaPoolId: { anyOf: [id, { type: 'null' }] } }) }
+const toolFields = { id, vendor: text(100), brandIds, coverage, access: { enum: accessModes }, checkedOn: nullableDate, evidenceRef: { anyOf: [text(500), { type: 'null' }] } }
+const stackSchema = object({
+  asOf: date, workspaceLabel: text(100),
+  budget: object({ currency, maxMonthlyStackCost: money, maxNewUpfrontCost: money }),
+  subscriptions: auditSchema.properties.subscriptions,
+  requirements: { type: 'array', minItems: 1, maxItems: 36, items: object({ id, capability: { enum: capabilities }, unit: text(40), period, units: { ...quantity, minimum: 1 }, brandIds, allowedAccess: { type: 'array', minItems: 1, maxItems: accessModes.length, uniqueItems: true, items: { enum: accessModes } } }) },
+  ownedTools: { type: 'array', maxItems: 60, items: object({ ...toolFields, connectionState: { enum: ['unknown', 'reported_connected', 'reported_disconnected', 'reported_local'] }, costState: { enum: ['subscription', 'included', 'free', 'local', 'unknown'] }, subscriptionId: { anyOf: [id, { type: 'null' }] } }) },
+  offers: { type: 'array', maxItems: 12, items: object({ ...toolFields, amount: { anyOf: [money, { type: 'null' }] }, currency, billingCycle: { enum: ['monthly', 'annual', 'free', 'included', 'usage', 'unknown'] }, coveredBySubscriptionId: { anyOf: [id, { type: 'null' }] } }) },
+  workflows: { type: 'array', maxItems: 12, items: object({ id, name: text(100), brandId: id, steps: { type: 'array', minItems: 1, maxItems: 48, items: object({ id, requirementId: id, agentRole: { enum: ['scout', 'editor', 'producer', 'reviewer', 'courier', 'analyst'] }, dependsOn: { type: 'array', maxItems: 48, uniqueItems: true, items: id }, effect: { enum: ['read', 'create', 'publish'] } }) } }) },
+})
+
+const axisKey = row => JSON.stringify([row.capability, row.unit, row.period])
+const scopeKey = row => JSON.stringify([row.capability, [...row.brandIds].sort()])
+const orderIds = (a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0
+// Reserve two decimal places from the supplied decimal number without floating-point
+// multiplication or division inflating an exact cent. Annual obligations use divisor 12.
+function reserve(value, divisor = 1) {
+  const [coefficient, exponent = '0'] = String(value).split('e')
+  const [whole, fraction = ''] = coefficient.split('.')
+  const scale = fraction.length - Number(exponent)
+  const numerator = BigInt(whole + fraction) * (scale < 0 ? 10n ** BigInt(-scale) : 1n)
+  const denominator = (scale > 0 ? 10n ** BigInt(scale) : 1n) * BigInt(divisor)
+  return Number((numerator * 100n + denominator - 1n) / denominator) / 100
+}
+
+/** Prepare an inventory-aware stack and workflow graph; all evidence is supplied, never discovered. */
+export function designCreatorStack(input) {
+  validate(input, stackSchema)
+  for (const field of ['subscriptions', 'requirements', 'ownedTools', 'offers', 'workflows']) uniqueIds(input[field], `input.${field}`)
+  uniqueIds([...input.ownedTools, ...input.offers], 'input.toolIds')
+  const bills = new Map(input.subscriptions.map(row => [row.id, row]))
+  for (const bill of input.subscriptions) if (bill.workspaceLabel !== input.workspaceLabel) fail('input.subscriptions', 'workspace mismatch')
+  const groups = []
+  for (const requirement of [...input.requirements].sort(orderIds)) {
+    let group = groups.find(row => row.key === scopeKey(requirement))
+    if (!group) { group = { id: requirement.id, key: scopeKey(requirement), capability: requirement.capability, brandIds: [...requirement.brandIds].sort(), requirements: [] }; groups.push(group) }
+    if (group.requirements.some(row => axisKey(row) === axisKey(requirement))) fail('input.requirements', 'duplicate quota axis in a capability and brand scope')
+    group.requirements.push(requirement)
+  }
+  if (groups.length > 18) fail('input.requirements', 'at most 18 capability and brand groups')
+  for (let i = 0; i < groups.length; i++) for (let j = i + 1; j < groups.length; j++) {
+    if (groups[i].capability === groups[j].capability && groups[i].brandIds.some(brand => groups[j].brandIds.includes(brand))) fail('input.requirements', 'overlapping brand scopes for one capability; combine its quota axes into one group')
+  }
+  const current = row => row.checkedOn !== null && row.evidenceRef !== null && row.checkedOn <= input.asOf && (Date.parse(input.asOf) - Date.parse(row.checkedOn)) / 86400000 <= 31
+  function licensed(reference, tool) {
+    const bill = bills.get(reference)
+    return bill && ['active', 'trial'].includes(bill.state) && tool.brandIds.every(brand => bill.brandIds.includes(brand))
+  }
+  const namedPools = new Map()
+  for (const tool of [...input.ownedTools, ...input.offers]) {
+    const keys = tool.coverage.map(axisKey)
+    if (new Set(keys).size !== keys.length) fail(`input.tools.${tool.id}.coverage`, 'duplicate quota axis')
+    for (const row of tool.coverage) if (row.quotaPoolId !== null) {
+      const measurement = JSON.stringify([row.unit, row.period])
+      if (namedPools.has(row.quotaPoolId) && namedPools.get(row.quotaPoolId) !== measurement) fail(`input.tools.${tool.id}.coverage`, 'named quota pool has inconsistent unit or period')
+      namedPools.set(row.quotaPoolId, measurement)
+    }
+  }
+  for (const tool of input.ownedTools) {
+    const paid = ['subscription', 'included'].includes(tool.costState)
+    if (paid && !bills.has(tool.subscriptionId)) fail(`input.ownedTools.${tool.id}`, 'subscription reference missing from supplied ledger')
+    if (!paid && tool.subscriptionId !== null) fail(`input.ownedTools.${tool.id}`, 'subscription reference contradicts cost state')
+  }
+  for (const offer of input.offers) {
+    if (offer.billingCycle === 'included') {
+      if (offer.amount !== 0 || !bills.has(offer.coveredBySubscriptionId)) fail(`input.offers.${offer.id}`, 'included offer needs zero incremental price and a supplied subscription reference')
+    } else if (offer.coveredBySubscriptionId !== null) fail(`input.offers.${offer.id}`, 'subscription reference only applies to an included offer')
+    if (offer.billingCycle === 'free' && offer.amount !== 0) fail(`input.offers.${offer.id}`, 'free offer must have a supplied zero price')
+  }
+
+  const audit = auditCreatorSubscriptions({ asOf: input.asOf, subscriptions: input.subscriptions })
+  const liveBills = input.subscriptions.filter(row => row.state !== 'cancelled')
+  const incompleteBillIds = liveBills.filter(row => !['active', 'trial'].includes(row.state) || row.amount === null || !['monthly', 'annual'].includes(row.billingCycle) || row.currency !== input.budget.currency || row.evidence === 'unknown').map(row => row.id)
+  const unknownCostToolIds = input.ownedTools.filter(row => row.costState === 'unknown').map(row => row.id)
+  const baselineComplete = incompleteBillIds.length === 0 && unknownCostToolIds.length === 0
+  const baseline = round(liveBills.filter(row => ['active', 'trial'].includes(row.state) && row.currency === input.budget.currency && row.amount !== null && ['monthly', 'annual'].includes(row.billingCycle)).reduce((total, row) => total + reserve(row.amount, row.billingCycle === 'annual' ? 12 : 1), 0))
+  const owned = input.ownedTools.filter(row => current(row) && (!['subscription', 'included'].includes(row.costState) || licensed(row.subscriptionId, row))).sort((a, b) => {
+    const rank = row => (['reported_connected', 'reported_local'].includes(row.connectionState) ? 0 : 2) + (bills.get(row.subscriptionId)?.state === 'trial' ? 1 : 0)
+    return rank(a) - rank(b) || orderIds(a, b)
+  })
+  const offerReviews = []
+  const offers = []
+  for (const row of [...input.offers].sort(orderIds)) {
+    const reasons = []
+    if (!current(row)) reasons.push('price or entitlement evidence missing, future-dated or older than 31 days')
+    if (row.billingCycle === 'included' && !licensed(row.coveredBySubscriptionId, row)) reasons.push('included subscription inactive or brand scope unproved')
+    if (['usage', 'unknown'].includes(row.billingCycle) || row.amount === null) reasons.push('fixed price unknown; usage is not treated as zero')
+    const paid = ['monthly', 'annual'].includes(row.billingCycle)
+    if (paid && row.currency !== input.budget.currency) reasons.push('currency differs; no FX conversion')
+    if (paid && row.amount > 0 && !baselineComplete) reasons.push('current stack spend incomplete')
+    if (reasons.length) { offerReviews.push({ id: row.id, reasons, action: 'verify_offer' }); continue }
+    offers.push({ ...row, monthlyReserve: paid ? reserve(row.amount, row.billingCycle === 'annual' ? 12 : 1) : 0, upfrontReserve: paid ? reserve(row.amount) : 0 })
+  }
+
+  const usage = new Map()
+  const quotaKey = (tool, row) => {
+    const entitlement = tool.coverage.find(entry => axisKey(entry) === axisKey(row))
+    if (entitlement?.quotaPoolId) return `pool:${entitlement.quotaPoolId}`
+    const subscription = tool.subscriptionId ?? tool.coveredBySubscriptionId
+    return `${subscription ? 'subscription' : 'tool'}:${subscription ?? tool.id}:${axisKey(row)}`
+  }
+  const poolCapacities = new Map()
+  // Several access views or included features of one bill do not multiply its quota.
+  for (const tool of [...owned, ...offers]) for (const row of tool.coverage) {
+    if (row.capacity !== null) {
+      const key = quotaKey(tool, row)
+      poolCapacities.set(key, Math.min(poolCapacities.get(key) ?? Infinity, row.capacity))
+    }
+  }
+  function fits(tool, group, allocations) {
+    return group.brandIds.every(brand => tool.brandIds.includes(brand)) && group.requirements.every(requirement => {
+      const entitlement = tool.coverage.find(row => axisKey(row) === axisKey(requirement))
+      return requirement.allowedAccess.includes(tool.access) && entitlement?.capacity !== null && entitlement !== undefined && (allocations.get(quotaKey(tool, requirement)) ?? 0) + requirement.units <= poolCapacities.get(quotaKey(tool, requirement))
+    })
+  }
+  function allocate(tool, group, allocations) {
+    for (const row of group.requirements) { const key = quotaKey(tool, row); allocations.set(key, (allocations.get(key) ?? 0) + row.units) }
+  }
+  const allocationOrder = [...groups].sort((a, b) => owned.filter(tool => fits(tool, a, usage)).length - owned.filter(tool => fits(tool, b, usage)).length || orderIds(a, b))
+  const bindings = new Map()
+  for (const group of allocationOrder) {
+    const tool = owned.find(row => fits(row, group, usage))
+    if (tool) { bindings.set(group.key, { tool, kind: 'owned' }); allocate(tool, group, usage) }
+  }
+  const remaining = groups.filter(row => !bindings.has(row.key))
+  let best = { count: 0, monthly: 0, upfront: 0, selected: [], assignments: new Map() }
+  // Bounded subset comparison (<= 4096). Assignment within each subset is deterministic,
+  // most-constrained-first; this is not a global quality or allocation optimum.
+  for (let mask = 1; mask < 2 ** offers.length; mask++) {
+    const selected = offers.filter((_, index) => mask & (2 ** index))
+    const monthly = round(selected.reduce((sum, row) => sum + row.monthlyReserve, 0))
+    const upfront = round(selected.reduce((sum, row) => sum + row.upfrontReserve, 0))
+    if ((monthly > 0 && round(baseline + monthly) > input.budget.maxMonthlyStackCost) || upfront > input.budget.maxNewUpfrontCost) continue
+    const allocations = new Map(usage), assignments = new Map()
+    const ordered = [...remaining].sort((a, b) => selected.filter(tool => fits(tool, a, allocations)).length - selected.filter(tool => fits(tool, b, allocations)).length || orderIds(a, b))
+    for (const group of ordered) {
+      const tool = [...selected].sort((a, b) => a.monthlyReserve - b.monthlyReserve || a.upfrontReserve - b.upfrontReserve || orderIds(a, b)).find(row => fits(row, group, allocations))
+      if (tool) { assignments.set(group.key, { tool, kind: 'offer' }); allocate(tool, group, allocations) }
+    }
+    if (assignments.size > best.count || (assignments.size === best.count && (monthly < best.monthly || (monthly === best.monthly && (upfront < best.upfront || (upfront === best.upfront && (selected.length < best.selected.length || (selected.length === best.selected.length && selected.map(row => row.id).join(',') < best.selected.map(row => row.id).join(','))))))))) best = { count: assignments.size, monthly, upfront, selected, assignments }
+  }
+  for (const [key, value] of best.assignments) bindings.set(key, value)
+  const decisions = groups.map(group => {
+    const binding = bindings.get(group.key)
+    const tool = binding?.tool
+    const action = !tool ? 'evaluate' : binding.kind === 'owned' ? 'reuse_existing' : tool.billingCycle === 'included' ? 'use_included' : tool.billingCycle === 'free' ? 'try_free' : 'propose_purchase'
+    const subscriptionId = tool ? (binding.kind === 'owned' ? tool.subscriptionId : tool.coveredBySubscriptionId) : null
+    return { capability: group.capability, brandIds: group.brandIds, requirementIds: group.requirements.map(row => row.id), toolId: tool?.id ?? null, vendor: tool?.vendor ?? null, access: tool?.access ?? null, subscriptionId, action,
+      state: 'prepared_only', entitlementEvidence: tool ? 'supplied_unverified' : 'missing', connectionVerified: false,
+      gaps: tool ? [binding.kind === 'offer' ? 'accept terms and establish entitlement before use' : 'verify actual account or local tool access', ...(action === 'propose_purchase' ? ['owner purchase decision required'] : []), ...(bills.get(subscriptionId)?.state === 'trial' ? ['trial expiry and conversion need review'] : [])] : ['no supplied tool fits quota, brand scope, access and budget constraints'] }
+  })
+  const requirements = new Map(input.requirements.map(row => [row.id, row]))
+  const workflows = input.workflows.map(workflow => {
+    uniqueIds(workflow.steps, `input.workflows.${workflow.id}.steps`)
+    const steps = new Map(workflow.steps.map(row => [row.id, row]))
+    for (const step of workflow.steps) {
+      const requirement = requirements.get(step.requirementId)
+      if (!requirement || !requirement.brandIds.includes(workflow.brandId)) fail(`input.workflows.${workflow.id}.${step.id}`, 'requirement missing or outside workflow brand')
+      if (step.effect === 'publish' && requirement.capability !== 'publishing') fail(`input.workflows.${workflow.id}.${step.id}`, 'publish effect requires the publishing capability')
+      if (step.dependsOn.some(dependency => !steps.has(dependency))) fail(`input.workflows.${workflow.id}.${step.id}`, 'dependency missing from this workflow')
+    }
+    const pending = [...workflow.steps].sort(orderIds), ordered = []
+    while (pending.length) {
+      const index = pending.findIndex(step => step.dependsOn.every(dependency => ordered.some(row => row.id === dependency)))
+      if (index < 0) fail(`input.workflows.${workflow.id}`, 'dependency cycle')
+      ordered.push(pending.splice(index, 1)[0])
+    }
+    const compiled = []
+    for (const step of ordered) {
+      const decision = decisions.find(row => row.requirementIds.includes(step.requirementId))
+      const blockedDependencyIds = step.dependsOn.filter(dependency => compiled.find(row => row.id === dependency).state.startsWith('blocked_'))
+      compiled.push({ ...step, toolId: decision.toolId, access: decision.access, stackAction: decision.action, state: !decision.toolId ? 'blocked_capability_gap' : blockedDependencyIds.length ? 'blocked_dependency' : 'prepared_requires_verification', blockedDependencyIds,
+        gates: ['verify entitlement, connection and brand scope', 'set per-run cost limit and capture actual usage receipts', ...(step.effect === 'create' ? ['source provenance and asset rights'] : []), ...(step.effect === 'publish' ? ['creator approval bound to exact revision and destination', 'current rights review', 'idempotency preflight and provider receipt reconciliation'] : [])] })
+    }
+    return { id: workflow.id, name: workflow.name, brandId: workflow.brandId, runtimeState: 'not_deployed', state: compiled.some(row => row.state.startsWith('blocked_')) ? 'blocked' : 'prepared_requires_verification', steps: compiled }
+  })
+  return { schema: 'gencreator.creator-stack.v1', version: operationsVersion, asOf: input.asOf, workspaceLabel: input.workspaceLabel, ...boundary,
+    purchaseAuthorized: false, cancellationsAuthorized: false, inventoryEvidence: 'supplied_records_only', accountDiscovery: 'not_performed', independentlyVerifiedEvidence: false,
+    policy: { reuseOwnedFirst: true, sharedSubscriptionCountedOnce: true, quotaPooling: 'explicit named pool, otherwise subscription plus capability/unit/period; smallest supplied known capacity across licensed views', evidenceMaxAgeDays: 31, selection: 'maximize covered capability and brand groups; then minimize additional monthly reserve, upfront commitment and new tools under deterministic quota allocation', globalOptimumGuaranteed: false, modelOrVendorQualityEvaluated: false },
+    costs: { currency: input.budget.currency, baselineMonthlyReserve: baseline, baselineComplete, incompleteBillIds, unknownCostToolIds, additionalMonthlyReserve: best.monthly, newUpfrontReserve: best.upfront, proposedMonthlyReserve: round(baseline + best.monthly), maxMonthlyStackCost: input.budget.maxMonthlyStackCost, maxNewUpfrontCost: input.budget.maxNewUpfrontCost, baselineOverBudget: baseline > input.budget.maxMonthlyStackCost, costCapEnforced: false, excludes: ['model and API usage', 'media generation usage', 'tax', 'FX', 'unreported subscriptions'], auditTotals: audit.totals },
+    decisions, offersToReview: offerReviews, selectedOfferIds: best.selected.map(row => row.id),
+    selectedOffers: best.selected.map(row => ({ id: row.id, vendor: row.vendor, amount: row.amount, currency: row.currency, billingCycle: row.billingCycle, monthlyReserve: row.monthlyReserve, upfrontReserve: row.upfrontReserve, checkedOn: row.checkedOn, evidenceRef: row.evidenceRef, evidenceVerified: false })), workflows,
+    subscriptionReview: { reviewQueue: audit.reviewQueue, overlapCandidates: audit.overlapCandidates, savingsVerified: false, cancellations: [] },
+    nextGate: 'Verify supplied inventory and quotes; obtain owner purchase decisions separately; bind authenticated tools and run limits before executing a reviewed workflow.',
+  }
+}
+
 export const operationsTools = [
   { name: 'gencreator_plan_operations', description: 'Prepare a portable multi-brand research, creation, publishing and learning plan from supplied brand records. No account checks, persistence, agent launch, model calls or publication.', inputSchema: planSchema },
   { name: 'gencreator_audit_subscriptions', description: 'Audit supplied SaaS subscription records: fixed-cost subtotals per currency, unknown costs, renewal and notice windows, and potential publishing overlaps. Does not discover bills, convert currencies, cancel or purchase.', inputSchema: auditSchema },
+  { name: 'gencreator_design_stack', description: 'Prepare a creator stack from supplied subscriptions, entitlements, requirements and dated offers. Reuse owned tools, reserve shared license costs once, compare bounded additions, and bind brand-scoped workflow graphs. No account discovery, purchase, cancellation or execution.', inputSchema: stackSchema },
 ].map(tool => ({ ...tool, annotations: { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } }))
 export function callOperationsTool(name, input) {
   if (name === 'gencreator_plan_operations') return planCreatorOperations(input)
   if (name === 'gencreator_audit_subscriptions') return auditCreatorSubscriptions(input)
+  if (name === 'gencreator_design_stack') return designCreatorStack(input)
   throw new Error('Unknown GenCreator operations tool.')
 }

@@ -1,10 +1,10 @@
 # GenCreator native workflows
 
-Private alpha candidate: three local skills for creators with owned source material. Named creator job: Frank prepares one source-based edition per active brand, keeps research evidence separate from fiction canon, and reviews publishing ownership and subscription exposure each week. Python 3.10+ runs source/revision checks. Node 22+ runs the existing GenCreator v0.5.0 launch engine and v0.1.0 operations engine. No API key or GenCreator account is required for local workflows.
+Private alpha candidate: three local skills for creators with owned source material. Named creator job: Frank prepares one source-based edition per active brand, keeps research evidence separate from fiction canon, and reviews publishing ownership and subscription exposure each week. Python 3.10+ runs source/revision checks. Node 22+ runs the existing GenCreator v0.5.0 launch engine and v0.2.0 operations engine. No API key or GenCreator account is required for local workflows.
 
 - GenCreator Producer: editorial drafting in the host model, exact source spans, voice preservation, draft review receipts and production handoffs.
 - GenCreator Launch: editable page/email/social/search copy, local compilation, integrity verification and supplied-metric calculations.
-- GenCreator Operations: separate brand lanes, proposed weekly jobs and four agent roles, plus a supplied-record subscription audit with currency subtotals, renewal/notice windows and publishing-overlap candidates.
+- GenCreator Operations: separate brand lanes, proposed weekly jobs and four agent roles, plus a supplied-record subscription audit with currency subtotals, renewal/notice windows and publishing-overlap candidates, plus CreatorStack decisions using supplied entitlements and dated offers. Stack design allocates brand quotas and shared credit pools, compares fixed/upfront reserves and prepares workflow dependency graphs; it does not discover accounts, buy tools or execute jobs.
 
 The model writes and judges creative work. The scripts validate and arrange inputs. Source substring matches do not prove truth, entailment or ownership. Confirmation receipts do not verify reviewer identity or authorize publication.
 
