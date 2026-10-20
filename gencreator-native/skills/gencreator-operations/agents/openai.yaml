@@ -1,0 +1,4 @@
+interface:
+  display_name: "GenCreator Operations"
+  short_description: "Plan brand jobs and review supplied SaaS costs"
+  default_prompt: "Use $gencreator-operations to prepare my brand operating plan and review my supplied subscriptions."

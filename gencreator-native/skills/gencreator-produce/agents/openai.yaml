@@ -1,0 +1,4 @@
+interface:
+  display_name: "GenCreator Producer"
+  short_description: "Turn owned source material into a reviewed content week."
+  default_prompt: "Use $gencreator-produce to turn this source into a reviewed content week with evidence and editable drafts."

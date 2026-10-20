@@ -1,0 +1,36 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "gencreator-native",
+  "version": "0.2.1-alpha.1",
+  "description": "Portable production, launch and multi-brand operations workflows with local execution.",
+  "author": {
+    "name": "GenCreator",
+    "url": "https://gencreator.ai"
+  },
+  "homepage": "https://gencreator.ai",
+  "repository": "https://github.com/frankxai/gencreator-skills",
+  "license": "MIT",
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "GenCreator",
+        "shortDescription": "Plan, create and review",
+        "longDescription": "Three local workflows: source-to-edition production, launch packets and creator operations. Includes evidence and revision checks, editable drafts, multi-brand job planning, supplied subscription audits and inventory-aware stack decisions with prepared workflow bindings. Optional remote MCP uses the existing GenCreator public endpoint; verify its tool list. Managed workspace access requires OAuth/readiness. This plugin does not start agents or publish. Creative Lab adds verified reference commissioning, three rendered directions, bounded workflow experiments, actual-build stories and independent evidence-linked learning.",
+        "developerName": "GenCreator",
+        "category": "Productivity",
+        "capabilities": [
+          "Read"
+        ],
+        "websiteURL": "https://gencreator.ai",
+        "privacyPolicyURL": "https://gencreator.ai/privacy",
+        "termsOfServiceURL": "https://gencreator.ai/terms",
+        "defaultPrompt": [
+          "Use GenCreator to turn this transcript into a reviewed content week.",
+          "Build a source-backed launch packet for this offer."
+        ],
+        "logo": "./assets/creative-lab-mark.svg",
+        "composerIcon": "./assets/creative-lab-mark.svg"
+      }
+    }
+  }
+}
