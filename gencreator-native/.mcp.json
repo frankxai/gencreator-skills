@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "gencreator": {
+      "type": "streamable-http",
+      "url": "https://gencreator.ai/api/mcp",
+      "headers": {}
+    }
+  }
+}
