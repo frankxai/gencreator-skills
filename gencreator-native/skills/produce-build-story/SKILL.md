@@ -1,6 +1,6 @@
 ---
 name: produce-build-story
-description: "Turn an actual artifact into a natural result-first 30\u201360 second demonstration with editable media and capture evidence. Use when there is a real build/output to show or a requested build-story recording package. Do not activate for fictional testimonials, generic product copy, a script-only rewrite or an artifact that has not been inspected."
+description: "Turn an actual artifact into a natural result-first 30–60 second demonstration with editable media and capture evidence. Use when there is a real build/output to show or a requested build-story recording package. Do not activate for fictional testimonials, generic product copy, a script-only rewrite or an artifact that has not been inspected."
 ---
 
 # Produce build story
@@ -22,4 +22,4 @@ No capture access: return the precise ready-to-record package and mark recording
 
 Read [commission contract](../reference-to-commission/references/commission-contract.md) before changing state. Load [tool routing](../reference-to-commission/references/tool-routing.md) only when a connected surface is needed. Reuse the same commission ID and compare the current revision immediately before every dependent action. Keep technical validation, source rights, founder selection and release state separate.
 
-When supplied by the private account package, read `references/private-guidance.md` from the plugin root for approved task-scoped source projections. Its approval/freshness states remain authoritative; a missing projection is a named gap.
+When supplied by the private account package, read `skills/reference-to-commission/references/private-guidance.md` from the plugin root for approved task-scoped source projections. Its approval/freshness states remain authoritative; a missing projection is a named gap.

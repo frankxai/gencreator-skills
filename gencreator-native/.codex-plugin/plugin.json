@@ -19,7 +19,7 @@
     "composerIcon": "./assets/creative-lab-mark.svg"
   },
   "name": "gencreator-native",
-  "version": "0.2.1-alpha.1",
+  "version": "0.2.1-alpha.2",
   "description": "Portable production, launch and multi-brand operations workflows with local execution.",
   "author": {
     "name": "GenCreator",

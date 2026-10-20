@@ -22,4 +22,4 @@ Missing artifact/source prevents acceptance; review the inspectable scope and na
 
 Read [commission contract](../reference-to-commission/references/commission-contract.md) before changing state. Load [tool routing](../reference-to-commission/references/tool-routing.md) only when a connected surface is needed. Reuse the same commission ID and compare the current revision immediately before every dependent action. Keep technical validation, source rights, founder selection and release state separate.
 
-When supplied by the private account package, read `references/private-guidance.md` from the plugin root for approved task-scoped source projections. Its approval/freshness states remain authoritative; a missing projection is a named gap.
+When supplied by the private account package, read `skills/reference-to-commission/references/private-guidance.md` from the plugin root for approved task-scoped source projections. Its approval/freshness states remain authoritative; a missing projection is a named gap.
