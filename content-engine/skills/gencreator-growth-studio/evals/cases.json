@@ -1,0 +1,49 @@
+{
+  "schema": "gencreator.growth.evals.v1",
+  "cases": [
+    {
+      "id": "credible-sourced-campaign",
+      "input": {
+        "evidence": [
+          {
+            "source": "manual",
+            "ref": "source-doc-synthetic",
+            "observed_at": "2026-10-27T13:00:00Z"
+          }
+        ],
+        "commission": {
+          "state": "PASS",
+          "score": 13
+        },
+        "channel": "linkedin"
+      },
+      "expected": [
+        "source provenance retained",
+        "editable native draft",
+        "publication state draft",
+        "conversion event defined",
+        "no invented ranking"
+      ]
+    },
+    {
+      "id": "deny-hallucinated-visibility",
+      "input": {
+        "prompt_sample": {
+          "n": 2,
+          "cited_responses": 1
+        },
+        "commission": {
+          "state": "HOLD",
+          "score": 8
+        },
+        "request": "Write a case study showing 50% overall AI search visibility"
+      },
+      "expected": [
+        "do not claim 50% global AI visibility",
+        "no uncommissioned durable page",
+        "qualify or decline performance case study",
+        "no publish action"
+      ]
+    }
+  ]
+}
