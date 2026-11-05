@@ -1,0 +1,21 @@
+{
+  "name": "gencreator-native",
+  "interface": {
+    "displayName": "GenCreator native workflows"
+  },
+  "plugins": [
+    {
+      "name": "gencreator-native",
+      "source": {
+        "source": "local",
+        "path": "./plugins/gencreator-native"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
+

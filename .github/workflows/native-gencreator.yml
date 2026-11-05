@@ -1,0 +1,21 @@
+name: Native GenCreator checks
+on:
+  pull_request:
+    paths: ['plugins/gencreator-native/**', '.agents/plugins/marketplace.json', '.github/workflows/native-gencreator.yml']
+  push:
+    branches: [main]
+    paths: ['plugins/gencreator-native/**', '.agents/plugins/marketplace.json', '.github/workflows/native-gencreator.yml']
+jobs:
+  local-workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: python3 -m unittest discover -s plugins/gencreator-native/tests -v
+      - run: node --test plugins/gencreator-native/tests/operations.test.mjs
+      - run: node plugins/gencreator-native/scripts/verify-projections.mjs
+      - run: node plugins/gencreator-native/skills/gencreator-launch/scripts/launch.mjs doctor
+      - run: node plugins/gencreator-native/skills/gencreator-launch/scripts/launch.mjs compile plugins/gencreator-native/skills/gencreator-launch/examples/launch.json /tmp/gencreator-launch-candidate
+      - run: node plugins/gencreator-native/skills/gencreator-launch/scripts/launch.mjs verify /tmp/gencreator-launch-candidate
