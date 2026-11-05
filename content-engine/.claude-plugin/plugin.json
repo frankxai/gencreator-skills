@@ -1,7 +1,7 @@
 {
   "name": "content-engine",
-  "version": "1.1.0",
-  "description": "Evidence-backed search authority, voice-consistent content creation, newsletters, video scripts, and multi-channel repurposing. Includes canonical ownership, commission gates, proof waves, SEO/GEO workflows, review, and measurement. Requires voice config from core plugin.",
+  "version": "1.2.0",
+  "description": "Evidence-backed search authority, voice-consistent content creation, newsletters, video scripts, and multi-channel repurposing. Includes canonical ownership, commission gates, proof waves, SEO/GEO workflows, review, and measurement. Requires voice config from core plugin. Growth Studio bridges sourced SEO/AEO/GEO and AI search visibility intelligence into approved creator campaigns.",
   "author": {
     "name": "frankxai"
   }
