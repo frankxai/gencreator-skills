@@ -1,0 +1,20 @@
+{
+  "schema": "gencreator.apify-map.v1",
+  "fields": {
+    "id": "id",
+    "url": "url",
+    "creator": "author.name",
+    "views": "views",
+    "published_at": null,
+    "duration_seconds": null,
+    "transcript": null
+  },
+  "provenance": {
+    "actor": "synthetic-actor",
+    "build": "1.0.0",
+    "run_id": "synthetic-run",
+    "dataset_id": "synthetic-dataset",
+    "observed_at": "2026-11-05T10:00:00Z",
+    "actual_cost_usd": null
+  }
+}
