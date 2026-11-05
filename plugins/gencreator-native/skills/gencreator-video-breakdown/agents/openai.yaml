@@ -1,0 +1,4 @@
+interface:
+  display_name: GenCreator Video Breakdown
+  short_description: Inspect video, brief originals
+  default_prompt: Break down this video's hook and timed beats, show the evidence, and brief an original video in my voice.

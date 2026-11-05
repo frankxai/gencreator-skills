@@ -1,0 +1,35 @@
+{
+  "schema": "gencreator.video-breakdown.v1",
+  "video_ref": "synthetic:demo",
+  "duration_seconds": 12,
+  "evidence": [
+    {
+      "id": "f1",
+      "modality": "visual",
+      "start": 0,
+      "end": 3,
+      "artifact_ref": "synthetic-frame.jpg",
+      "sha256": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "claims": [
+    {
+      "text": "A supplied synthetic product frame.",
+      "kind": "observation",
+      "modality": "visual",
+      "evidence_ids": [
+        "f1"
+      ]
+    }
+  ],
+  "beats": [
+    {
+      "start": 0,
+      "end": 3,
+      "role": "demonstration",
+      "evidence_ids": [
+        "f1"
+      ]
+    }
+  ]
+}
