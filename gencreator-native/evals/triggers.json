@@ -1,0 +1,31 @@
+{
+  "kind": "model-trigger-cases",
+  "status": "pending-host-evaluation",
+  "cases": [
+    {
+      "skill": "reference-to-commission",
+      "activation": "Apply this reference to our actual product and choose one useful commission.",
+      "nonactivation": "Summarize this article in two sentences."
+    },
+    {
+      "skill": "direct-experience",
+      "activation": "Render three distinct directions for this visual commission and compare desktop/mobile.",
+      "nonactivation": "Change this button radius to 8px exactly."
+    },
+    {
+      "skill": "run-workflow-experiment",
+      "activation": "Implement and inspect a small useful workflow trial from this commission.",
+      "nonactivation": "List possible platform architectures without building."
+    },
+    {
+      "skill": "produce-build-story",
+      "activation": "Capture this actual build in a 45-second editable demonstration.",
+      "nonactivation": "Proofread this fictional monologue."
+    },
+    {
+      "skill": "review-and-learn",
+      "activation": "Independently inspect this artifact and propose evidence-linked workflow learning.",
+      "nonactivation": "Give this idea a confidence score without seeing the artifact."
+    }
+  ]
+}

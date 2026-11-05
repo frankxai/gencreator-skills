@@ -1,0 +1,4 @@
+interface:
+  display_name: "Direct experience"
+  short_description: "Compare three rendered treatments with real content"
+  default_prompt: "Use $direct-experience for this commission and record the actual result."

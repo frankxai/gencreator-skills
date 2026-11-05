@@ -1,0 +1,4 @@
+interface:
+  display_name: "Review and learn"
+  short_description: "Inspect real work and retain evidence-linked learning"
+  default_prompt: "Use $review-and-learn for this commission and record the actual result."

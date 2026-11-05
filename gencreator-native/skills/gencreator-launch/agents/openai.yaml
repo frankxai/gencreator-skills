@@ -1,0 +1,4 @@
+interface:
+  display_name: "GenCreator Launch"
+  short_description: "Build editable launch drafts with a portable local runtime."
+  default_prompt: "Use $gencreator-launch to build a source-backed launch packet for this offer."

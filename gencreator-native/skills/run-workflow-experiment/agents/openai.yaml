@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run workflow experiment"
+  short_description: "Build a bounded useful trial and inspect its outcome"
+  default_prompt: "Use $run-workflow-experiment for this commission and record the actual result."

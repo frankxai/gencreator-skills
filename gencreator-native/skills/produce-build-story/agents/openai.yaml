@@ -1,0 +1,4 @@
+interface:
+  display_name: "Produce build story"
+  short_description: "Capture an actual result in an editable short story"
+  default_prompt: "Use $produce-build-story for this commission and record the actual result."
