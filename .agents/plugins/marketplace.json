@@ -1,7 +1,7 @@
 {
   "name": "gencreator-native",
   "interface": {
-    "displayName": "GenCreator native workflows"
+    "displayName": "GenCreator workflows"
   },
   "plugins": [
     {
@@ -15,7 +15,18 @@
         "authentication": "ON_USE"
       },
       "category": "Productivity"
+    },
+    {
+      "name": "content-engine",
+      "source": {
+        "source": "local",
+        "path": "./content-engine"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Productivity"
     }
   ]
 }
-

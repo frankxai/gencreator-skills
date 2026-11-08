@@ -1,19 +1,25 @@
 name: Native GenCreator checks
 on:
   pull_request:
-    paths: ['plugins/gencreator-native/**', '.agents/plugins/marketplace.json', '.github/workflows/native-gencreator.yml']
+    paths: ['plugins/gencreator-native/**', 'content-engine/**', '.agents/plugins/marketplace.json', '.github/workflows/native-gencreator.yml']
   push:
     branches: [main]
-    paths: ['plugins/gencreator-native/**', '.agents/plugins/marketplace.json', '.github/workflows/native-gencreator.yml']
+    paths: ['plugins/gencreator-native/**', 'content-engine/**', '.agents/plugins/marketplace.json', '.github/workflows/native-gencreator.yml']
+concurrency:
+  group: native-gencreator-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   local-workflows:
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
       - run: python3 -m unittest discover -s plugins/gencreator-native/tests -v
+      - run: python3 -B -m unittest discover -s content-engine/skills/signature-edition/tests -v
       - run: node --test plugins/gencreator-native/tests/operations.test.mjs
       - run: node plugins/gencreator-native/scripts/verify-projections.mjs
       - run: node plugins/gencreator-native/skills/gencreator-launch/scripts/launch.mjs doctor

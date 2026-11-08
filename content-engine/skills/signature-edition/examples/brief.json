@@ -1,0 +1,65 @@
+{
+  "schema": "gencreator.signature-brief.v1",
+  "brand": "Cedar Studio, fictional worked example",
+  "reader_job": "Help a maker explain one design decision so a visitor can judge its consequence.",
+  "reader_action": "Inspect a specific change in an object they make.",
+  "tension": "Process imagery can invite admiration while leaving the actual design decision unexplained.",
+  "point_of_view": "Show the consequence of the decision before asking the reader to admire the craft.",
+  "reader_change": "From photographing the atmosphere of making to documenting a choice someone can inspect.",
+  "voice": {
+    "status": "provisional",
+    "anchors": [
+      "Concrete observations and ordinary verbs.",
+      "Patient attention to use, proportion and human movement."
+    ],
+    "avoid": [
+      "Craft mythology standing in for evidence.",
+      "Unmeasured sales, productivity or sustainability claims."
+    ]
+  },
+  "directions": [
+    {
+      "id": "editorial-study",
+      "label": "The underside, an editorial study",
+      "opening": "The pencil mark is on the underside. You have to kneel to see it.",
+      "composition": "Begin with a concealed detail, explain its consequence, then offer an inspection.",
+      "language": "Close observation in short and medium sentences, with practical questions in the middle.",
+      "material": "Paper-like editorial reading with a three-frame photographic sequence.",
+      "interaction": "A visitor compares the old and present leg positions.",
+      "motion": "Still images suffice; any film holds long enough to inspect the change.",
+      "tradeoff": "A quiet opening needs an audience willing to look closely."
+    },
+    {
+      "id": "maker-field-recording",
+      "label": "A maker explains a change",
+      "opening": "Pull the chair in. That was the movement that changed the drawing.",
+      "composition": "Begin with a physical action, reveal the obstruction, replay the repaired action.",
+      "language": "Spoken, first-person demonstration by the actual maker when authorized.",
+      "material": "An intimate recording with room sound and close views of hands and joinery.",
+      "interaction": "The viewer repeats the seated movement with their own furniture.",
+      "motion": "A single patient camera move below the desk, with a static alternative.",
+      "tradeoff": "Requires an actual maker, consented recording and usable sound; those are absent here."
+    },
+    {
+      "id": "decision-map",
+      "label": "A navigable anatomy of one decision",
+      "opening": "Move the leg. Keep the room for the person.",
+      "composition": "Organize the piece around before, choice and consequence rather than chronology.",
+      "language": "Compact annotations beside evidence, with optional longer explanations.",
+      "material": "A technical sketch and labelled photographs, with exact geometry when available.",
+      "interaction": "Readers choose the observation they want to inspect first.",
+      "motion": "No animation by default; position changes need a reduced-motion comparison.",
+      "tradeoff": "Could become a diagram exercise unless the human consequence remains central."
+    }
+  ],
+  "selection": {
+    "direction": "editorial-study",
+    "basis": "agent_recommendation",
+    "reason": "It delivers a complete authored piece from the available written source without implying that footage or exact technical drawings exist."
+  },
+  "critique": {
+    "weak_passage": "'Every imperfection tells the story of a maker's care.'",
+    "repair": "Replaced an unverifiable generalization with the moved leg, the room around a seated person's knees and an inspection the visitor can make.",
+    "remaining_gap": "The example is fictional. Real product photographs, the maker's approved voice and a visitor's response have not been tested."
+  }
+}

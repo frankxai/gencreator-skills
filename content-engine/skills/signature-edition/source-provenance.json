@@ -1,0 +1,13 @@
+{
+  "author": "Codex",
+  "created_on": "2026-11-08",
+  "revision": 1,
+  "source": "Existing GenCreator local-edition.v1 implementation, version 0.5.0",
+  "source_path": "skills/gencreator-produce/scripts/edition.py",
+  "source_sha256": "788c75c2e5190c9fa5c16f8590d8f29e6d73221009fd718f5335384b914e6928",
+  "local_path": "scripts/edition_core.py",
+  "license": "MIT; original notice retained in LICENSE",
+  "transform": "none",
+  "review_state": "Mechanical tests passed; independent provider and real creator acceptance pending",
+  "local_sha256": "788c75c2e5190c9fa5c16f8590d8f29e6d73221009fd718f5335384b914e6928"
+}
