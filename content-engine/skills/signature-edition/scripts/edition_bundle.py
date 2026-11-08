@@ -16,6 +16,9 @@ import zipfile
 spec = importlib.util.spec_from_file_location("signature_edition_core", Path(__file__).with_name("edition_core.py"))
 core = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(core)
+research_spec = importlib.util.spec_from_file_location("signature_research", Path(__file__).with_name("research_evidence.py"))
+research = importlib.util.module_from_spec(research_spec)
+research_spec.loader.exec_module(research)
 MAX_ARCHIVE = 16 * 1024 * 1024
 AXES = ("composition", "language", "material", "interaction", "motion")
 
@@ -38,7 +41,7 @@ def sha(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def check(edition, brief):
+def check(edition, brief, dossier=None, as_of=None):
     review = core.review(edition)
     require(isinstance(brief, dict) and brief.get("schema") == "gencreator.signature-brief.v1", "Unsupported creative brief")
     for field in ("brand", "reader_job", "reader_action", "tension", "point_of_view", "reader_change"):
@@ -71,7 +74,7 @@ def check(edition, brief):
     require(isinstance(critique, dict), "Record editorial critique")
     for field in ("weak_passage", "repair", "remaining_gap"):
         core.text(critique.get(field), field, 4000)
-    return {
+    result = {
         "schema": "gencreator.signature-review.v1",
         "edition": review,
         "brief_digest": core.digest(brief),
@@ -88,10 +91,13 @@ def check(edition, brief):
             "The archive includes source text; keep it private until sharing is authorized.",
         ],
     }
+    if dossier is not None:
+        result["research"] = research.inspect(dossier, edition, as_of)
+    return result
 
 
-def render(edition, brief):
-    review = check(edition, brief)
+def render(edition, brief, dossier=None, as_of=None):
+    review = check(edition, brief, dossier, as_of)
     directions = ["# Creative direction", "", brief["reader_job"], "",
                   "Reader change: " + brief["reader_change"], "",
                   "Point of view: " + brief["point_of_view"], ""]
@@ -119,6 +125,9 @@ def render(edition, brief):
             "A matching checksum proves byte consistency, not identity, truth or authorization.\n"
         ).encode("utf-8"),
     }
+    if dossier is not None:
+        files["research.json"] = encoded(dossier)
+        files["research.md"] = research.markdown(dossier, review["research"]).encode("utf-8")
     for artifact in edition["artifacts"]:
         files["assets/" + artifact["id"] + ".md"] = (
             "# " + artifact["title"] + "\n\n" + artifact["content"] + "\n"
@@ -168,8 +177,8 @@ def prepare_web(edition):
     return result
 
 
-def export(edition, brief, output):
-    files = render(edition, brief)
+def export(edition, brief, output, dossier=None, as_of=None):
+    files = render(edition, brief, dossier, as_of)
     require(sum(map(len, files.values())) <= MAX_ARCHIVE, "Bundle exceeds size limit")
     target = Path(output)
     require(target.parent.is_dir(), "Output parent must already exist")
@@ -188,7 +197,7 @@ def export(edition, brief, output):
     return {"archive": str(target), "sha256": sha(data), "files": len(files), "publication_state": "draft"}
 
 
-def verify(path):
+def verify(path, as_of=None):
     with zipfile.ZipFile(path) as archive:
         members = archive.infolist()
         names = [m.filename for m in members]
@@ -207,11 +216,18 @@ def verify(path):
     require(isinstance(hashes, dict) and set(hashes) == set(files) - {"manifest.json"}, "Manifest inventory mismatch")
     for name, digest in hashes.items():
         require(digest == sha(files[name]), "Checksum mismatch: " + name)
-    expected = render(load_json(files["edition.json"].decode("utf-8")),
-                      load_json(files["creative-brief.json"].decode("utf-8")))
+    edition = load_json(files["edition.json"].decode("utf-8"))
+    dossier = load_json(files["research.json"].decode("utf-8")) if "research.json" in files else None
+    review = load_json(files["review.json"].decode("utf-8"))
+    historical = review.get("research", {}).get("as_of") if dossier is not None else None
+    expected = render(edition, load_json(files["creative-brief.json"].decode("utf-8")), dossier, historical)
     require(files == expected, "Bundle does not match its edition and creative brief")
-    return {"status": "verified", "files": len(files), "publication_state": "draft",
-            "scope": "Structure, exact quotes, revision bindings and archive bytes; semantic and human review remain separate"}
+    result = {"status": "verified", "files": len(files), "publication_state": "draft",
+              "scope": "Structure, exact quotes, revision bindings and archive bytes; semantic and human review remain separate"}
+    if dossier is not None:
+        result["current_research"] = research.inspect(dossier, edition, as_of)
+        result["research_at_export"] = review["research"]["state"]
+    return result
 
 
 def main():
@@ -221,17 +237,20 @@ def main():
         p = sub.add_parser(command)
         p.add_argument("--edition", required=True)
         p.add_argument("--brief", required=True)
+        p.add_argument("--research")
+        p.add_argument("--as-of")
         if command == "export":
             p.add_argument("--output", required=True)
     p = sub.add_parser("verify")
     p.add_argument("archive")
+    p.add_argument("--as-of")
     p = sub.add_parser("prepare-web")
     p.add_argument("--edition", required=True)
     p.add_argument("--output", required=True)
     args = parser.parse_args()
     try:
         if args.command == "verify":
-            result = verify(args.archive)
+            result = verify(args.archive, args.as_of)
         elif args.command == "prepare-web":
             data = encoded(prepare_web(load_json(core.read_file(args.edition))))
             with Path(args.output).open("xb") as stream:
@@ -241,7 +260,8 @@ def main():
         else:
             edition = load_json(core.read_file(args.edition))
             brief = load_json(core.read_file(args.brief))
-            result = check(edition, brief) if args.command == "review" else export(edition, brief, args.output)
+            dossier = load_json(core.read_file(args.research)) if args.research else None
+            result = check(edition, brief, dossier, args.as_of) if args.command == "review" else export(edition, brief, args.output, dossier, args.as_of)
         print(json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False))
         return 0
     except (ValueError, KeyError, TypeError, OSError, UnicodeError, zipfile.BadZipFile):

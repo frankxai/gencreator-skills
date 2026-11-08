@@ -1,0 +1,60 @@
+{
+  "schema": "gencreator.research-dossier.v1",
+  "edition_digest": "sha256:079c2a09f0202222ee045fd228634a029f74315e60a903fd7d1653a66d45dc87",
+  "question": "How can a fictional process story show a specific design decision without claiming commercial results?",
+  "created_on": "2026-11-08",
+  "sources": [
+    {
+      "id": "cedar-field-notes",
+      "title": "Fictional Cedar Studio notes, authored by Codex",
+      "url": "urn:gencreator:owned:cedar-field-notes",
+      "kind": "owned",
+      "retrieved_on": "2026-11-08",
+      "review_after": "2026-12-08",
+      "visibility": "public",
+      "usage": "owned",
+      "text": "Fictional field notes for a worked editorial example, authored by Codex.\nCedar Studio makes small wooden desks for people who draw, write and repair things.\nThe prototype kept a pencil line on its underside where the maker changed the leg position.\nThe line was evidence of a choice: more room for a seated person's knees.\nThe studio wants to show how a decision improves use, without romanticizing mistakes or claiming every rough edge is valuable.\nThe public invitation is to inspect the underside, sit at the desk, and decide whether the change matters.\nThe studio has no measured sales, productivity or sustainability results in this example.\n",
+      "digest": "sha256:d5ec6a32aa7477a9155950c28f3f81cab8114684381b59d34a6061ef98c51f3d"
+    }
+  ],
+  "claims": [
+    {
+      "id": "moved-leg",
+      "artifact_id": "the-pencil-line",
+      "span": {
+        "start": 222,
+        "end": 272,
+        "quote": "The mark survived because the maker moved the leg."
+      },
+      "kind": "fact",
+      "assessment": "supported",
+      "reason": "Supported within the explicitly fictional example; this establishes no real-world customer evidence. Other material passages still need editorial coverage review.",
+      "evidence": [
+        {
+          "source_id": "cedar-field-notes",
+          "relation": "supports",
+          "span": {
+            "start": 157,
+            "end": 248,
+            "quote": "The prototype kept a pencil line on its underside where the maker changed the leg position."
+          }
+        }
+      ]
+    }
+  ],
+  "decisions": [
+    {
+      "id": "show-the-consequence",
+      "choice": "Organize the story around the leg position and its consequence for sitting.",
+      "alternatives": [
+        "A general account of handmade quality.",
+        "A romantic account of mistakes and imperfection."
+      ],
+      "basis": [
+        "moved-leg"
+      ],
+      "boundary": "This is an authored fictional exercise; actual audience preference has not been measured.",
+      "next_test": "Have a real creator inspect a process story from their own work and record what they revise."
+    }
+  ]
+}

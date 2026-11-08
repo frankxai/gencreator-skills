@@ -36,6 +36,10 @@ The installed MCP configuration is empty. Choose only the providers required for
 
 ## Verification
 
+For research-backed writing, attach a [research dossier](skills/signature-edition/references/research-method.md). It connects exact passages in each draft to dated source snapshots, records contrary evidence and preserves the decision and next test. The export includes editable research and a linked reader's guide. Changing a draft invalidates its research binding. A later verification checks freshness again while preserving the archive's original review date.
+
+The checker performs no network calls and never executes source text. Source labels and editorial assessments remain supplied judgments. A mechanically clean dossier is ready for editorial review; it does not establish truth, complete coverage or permission to publish.
+
 Run the signature-edition unittest suite and the archive verify command. Tests cover exact source spans, revision bindings, unchanged exports, preservation of existing outputs and archive integrity. They do not judge factual entailment, taste, human identity or commercial performance.
 
 The existing GenCreator account icon is reused as a transitional asset. Independent creative review, real creator acceptance and directory submission remain release steps.
