@@ -1,0 +1,43 @@
+{
+  "schema": "gencreator.source-projection.v1",
+  "sourceRepository": "https://github.com/frankxai/gencreator.ai",
+  "sourceCommit": "10dd3f59f17d9eb91c3564507fb6ef09d1416277",
+  "operationsVersion": "0.2.0",
+  "files": [
+    {
+      "path": "skills/gencreator-operations/scripts/operations-core.mjs",
+      "sourcePath": "packages/gencreator/scripts/operations-core.mjs",
+      "sourceSha256": "8a12b2ce16fbec99b51c99c30f2ed58972bf531e2b870f9ec47f55c8f92602cb",
+      "sha256": "8a12b2ce16fbec99b51c99c30f2ed58972bf531e2b870f9ec47f55c8f92602cb",
+      "transform": "none"
+    },
+    {
+      "path": "skills/gencreator-operations/scripts/operations.mjs",
+      "sourcePath": "packages/gencreator/scripts/operations.mjs",
+      "sourceSha256": "74a3785899c93d7296a83e95b2af6eb26f53130bbc1ffea9b258d823a2ad4310",
+      "sha256": "74a3785899c93d7296a83e95b2af6eb26f53130bbc1ffea9b258d823a2ad4310",
+      "transform": "none"
+    },
+    {
+      "path": "skills/gencreator-operations/references/operations-contract.md",
+      "sourcePath": "packages/gencreator/references/operations-contract.md",
+      "sourceSha256": "5be3b4d3d25b6ad74c31cc73d2a0bd7652f00daf2d6ad69dfb7bdfe04423f949",
+      "sha256": "5be3b4d3d25b6ad74c31cc73d2a0bd7652f00daf2d6ad69dfb7bdfe04423f949",
+      "transform": "none"
+    },
+    {
+      "path": "skills/gencreator-operations/SKILL.md",
+      "sourcePath": "packages/gencreator/skills/gencreator-operations/SKILL.md",
+      "sourceSha256": "a4a75737ed1787e67c136b79c46830562528d884d016ea29001c04b2f268f388",
+      "sha256": "afb5544f38a2f67e2e4e352622571e70da18541a645c9099413c374981527618",
+      "transform": "relative script/reference paths"
+    },
+    {
+      "path": "tests/operations.test.mjs",
+      "sourcePath": "scripts/tests/creator-operations.test.mjs",
+      "sourceSha256": "8a3efa2c4a425fb8e93cf6876d69eaffa52f717cde8422abf16a159aaa6491b2",
+      "sha256": "eaead2d7456b2d01291243293d60afab8ede7fe12e2f92433ad33273b362bf08",
+      "transform": "relative core/CLI paths"
+    }
+  ]
+}

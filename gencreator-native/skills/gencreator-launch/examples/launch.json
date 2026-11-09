@@ -1,0 +1,33 @@
+{
+  "schema": "gencreator.launch.v1",
+  "packId": "example-lesson-workbook",
+  "missionId": "first-waitlist",
+  "brand": { "name": "Example lesson workbook (fictional example)", "url": "https://example.com" },
+  "offer": {
+    "audience": "independent educators turning their own notes into a short course",
+    "problem": "Useful lessons are scattered across unfinished notes.",
+    "promise": "Turn one owned source into a reviewable lesson outline.",
+    "description": "a downloadable lesson-planning workbook",
+    "ctaLabel": "Join the workbook waitlist",
+    "ctaUrl": "https://example.com/waitlist"
+  },
+  "source": { "text": "Start with a question your readers ask. Select one passage from your own notes. Write a worked example, explain its limits, and invite the reader to try it.", "excerpt": "Write a worked example, explain its limits, and invite the reader to try it.", "permission": "owned", "redistribution": "permitted" },
+  "evidence": [{ "id": "method", "quote": "Write a worked example, explain its limits, and invite the reader to try it." }],
+  "funnel": "waitlist",
+  "channels": ["email", "linkedin", "search", "relationships"],
+  "stack": { "website": "nextjs-vercel", "email": "resend", "data": "none", "analytics": "undecided" },
+  "goal": { "metric": "qualified_leads", "target": 10, "windowDays": 30, "qualification": "An educator with owned notes who wants to make a workbook within the next month." },
+  "drafts": {
+    "pageHeadline": "Give your scattered teaching notes a first lesson.",
+    "pageBody": "This example workbook helps you choose one learner question, find a useful passage in your own notes, and turn it into a worked example. Join the waitlist to help shape the first edition.",
+    "welcomeSubject": "What have you been meaning to teach?",
+    "welcomeBody": "Thanks for joining the example workbook waitlist.\n\nStart with one question your learners keep asking. You do not need a complete course to answer it well.\n\nReply with that question and the kind of notes you already have. Your answer will help shape the workbook.\n\nExample lesson workbook",
+    "lessonSubject": "Try this with one passage from your notes",
+    "lessonBody": "Pick one passage from notes you own.\n\nWrite a short example that shows the idea at work. Then add one sentence explaining where the example stops being useful.\n\nThat gives your learner both a starting point and a boundary. What question would you add to help them try it?\n\nExample lesson workbook",
+    "invitationSubject": "Help shape the example workbook",
+    "invitationBody": "If you have useful teaching notes but no clear first lesson, that is the problem this workbook is designed to address.\n\nTell us what you teach and what you want a learner to be able to try.\n\nJoin the workbook waitlist: https://example.com/waitlist\n\nExample lesson workbook",
+    "linkedin": "A useful first lesson can begin with one learner question and one passage from your own notes.\n\nWrite an example. Explain its limits. Invite the reader to try it.\n\nI am developing a workbook around that sequence. If your teaching ideas are scattered across unfinished notes, what would help you choose the first one?\n\nJoin the workbook waitlist: https://example.com/waitlist",
+    "searchAnswer": "To turn teaching notes into a first lesson, choose one question your learners ask. Find a passage in your own notes that addresses it. Write an example, explain the example's limits, and ask the learner to try the method. This is a starting structure, not evidence that every topic can be taught in one short lesson."
+  }
+}
+

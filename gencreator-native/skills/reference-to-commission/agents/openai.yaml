@@ -1,0 +1,4 @@
+interface:
+  display_name: "Reference to commission"
+  short_description: "Turn verified references into one useful commission"
+  default_prompt: "Use $reference-to-commission for this commission and record the actual result."
