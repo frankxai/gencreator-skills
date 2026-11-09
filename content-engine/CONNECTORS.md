@@ -19,3 +19,7 @@
 ## No Connectors Required
 
 Content creation and review work fully offline using local voice documentation (`CREATOR.md`). Connectors add distribution capability.
+
+The installed MCP configuration is empty. Previous placeholder connections are now opt-in examples in `examples/mcp-config.json`; they do not start on install. Choose a provider only when the job needs it, verify its current setup and use credentials from your own environment. The examples have not established provider availability or runtime compatibility.
+
+Installing this writing workflow does not connect accounts or authorize sends. Signature edition also works from a provisional voice brief when no existing voice file is available.

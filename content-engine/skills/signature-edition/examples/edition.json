@@ -1,0 +1,52 @@
+{
+  "schema": "gencreator.local-edition.v1",
+  "creator": "Codex, authored fictional demonstration",
+  "audience": "Independent makers explaining a design choice through useful editorial work",
+  "source": {
+    "label": "Cedar Studio fictional field notes",
+    "text": "Fictional field notes for a worked editorial example, authored by Codex.\nCedar Studio makes small wooden desks for people who draw, write and repair things.\nThe prototype kept a pencil line on its underside where the maker changed the leg position.\nThe line was evidence of a choice: more room for a seated person's knees.\nThe studio wants to show how a decision improves use, without romanticizing mistakes or claiming every rough edge is valuable.\nThe public invitation is to inspect the underside, sit at the desk, and decide whether the change matters.\nThe studio has no measured sales, productivity or sustainability results in this example.\n",
+    "rights": "owned"
+  },
+  "artifacts": [
+    {
+      "id": "the-pencil-line",
+      "channel": "website",
+      "title": "The pencil line we kept",
+      "content": "The pencil mark is on the underside. You have to kneel to see it.\n\nIt crosses the place where the back leg used to sit. The finished desk is clean above it: a flat surface, a shallow tray, enough space for a page to turn. The mark survived because the maker moved the leg.\n\nThat is the part of the design worth showing.\n\nA photograph from the front tells you what Cedar Studio made. The underside tells you what someone had to reconsider. A person pulled up a chair, reached for a pencil and found a knee against the frame. The leg moved. The person could sit closer. A small piece of geometry changed the way the desk could be used.\n\nThe line is useful evidence because there is a decision beside it.\n\nYou could tell the same story badly. Fill the frame with shavings. Talk about imperfection as though a rough edge proves care. Turn the maker into a character who suffers beautifully over every joint. None of that tells a reader whether the desk works for them.\n\nAn honest process story stays with the consequence. What was awkward? What changed? What can a visitor inspect for themselves?\n\nFor this desk, the answers are close enough to touch. Pull the chair in. Put both feet on the floor. Reach across the surface without twisting. Then look underneath.\n\nThe mark does not need to be visible on every desk. It belongs to this prototype, where it helps explain the choice. Removing a mark from a finished object can be as considered as keeping one. The judgment is in what the object asks of the person using it.\n\nThat distinction changes the photographs we would make.\n\nThe first frame shows a seated person and the room around their knees. The second shows the pencil line and the two leg positions. The third returns to the desk in use. The sequence lets the change become legible before anyone asks the viewer to admire the craft.\n\nIt changes the caption, too. We can say what moved and why. We cannot use this prototype to claim higher productivity, lower environmental impact or a happier working life. Those are different questions with different evidence.\n\nIf you make things, try this with one piece of your own. Find a decision you can point to. Put its earlier state beside its present one. Describe the consequence in a sentence a visitor could check.\n\nThen remove the sentences that ask for admiration before the visitor has seen the work.\n\nAt Cedar Studio, the invitation is simple: sit at the desk, look underneath and decide whether the change matters to you.",
+      "evidence": [
+        {
+          "start": 249,
+          "end": 322,
+          "quote": "The line was evidence of a choice: more room for a seated person's knees."
+        }
+      ]
+    },
+    {
+      "id": "sit-closer",
+      "channel": "instagram",
+      "title": "A caption with something to inspect",
+      "content": "A pencil line on the underside marks where this prototype's leg used to sit.\n\nWe moved it to leave more room for a seated person's knees. The photograph sequence should show the change: a person at the desk, the old and new positions, then the desk in use.\n\nSit down. Pull the chair closer. Look underneath. Decide whether the change matters.\n\nFictional Cedar Studio demonstration. Images described here have not been produced.",
+      "evidence": [
+        {
+          "start": 249,
+          "end": 322,
+          "quote": "The line was evidence of a choice: more room for a seated person's knees."
+        }
+      ]
+    },
+    {
+      "id": "under-the-desk",
+      "channel": "video",
+      "title": "A written film treatment, 35 seconds",
+      "content": "Status: written treatment; no footage, music or voiceover rendered.\n\n0-6 seconds: A person pulls a chair toward the desk. Hold on the space around the knees. Natural room sound.\n6-15 seconds: Cut underneath. A fingertip follows the retained pencil line, then the present leg position. Voice: 'This line marks a choice. The leg moved so a person could sit closer.'\n15-26 seconds: Return to the seated position. Show the reach across the surface. Avoid a beauty montage that hides the change.\n26-35 seconds: A wide, still frame. Voice: 'Sit down. Look underneath. Decide whether the change matters.'\n\nCaptions follow the spoken text. A static three-frame sequence carries the same argument when motion or audio is unavailable.",
+      "evidence": [
+        {
+          "start": 249,
+          "end": 322,
+          "quote": "The line was evidence of a choice: more room for a seated person's knees."
+        }
+      ]
+    }
+  ],
+  "confirmations": []
+}

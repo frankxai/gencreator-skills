@@ -34,7 +34,7 @@ claude plugin install music-lab@gencreator-skills
 | Plugin | What it does | Key commands |
 |--------|-------------|--------------|
 | `core` | Workspace memory, task management, session structure | `/creator-sprint`, `/acos-score` |
-| `content-engine` | Blog posts, social, newsletters, video scripts | `/create-content`, `/content-review`, `/generate-newsletter` |
+| `content-engine` | Signature editions, creative direction, source-linked writing and editable exports | `/content-engine:signature-edition`, `/create-content`, `/content-review` |
 | `visual-studio` | On-brand image generation with 7-gate quality filter | `/create-visual` |
 | `music-lab` | Suno prompt engineering, style consistency | `/create-music` |
 | `brand-architect` | Brand voice documentation and enforcement | `/brand-voice-check` |
@@ -42,6 +42,8 @@ claude plugin install music-lab@gencreator-skills
 | `intelligence` | Pattern tracking, learning report, ACOS score | `/intelligence-report` |
 
 ### How It Works
+
+For an owned source-to-finished-work task, start with [Signature edition](content-engine/README.md). It includes a complete fictional worked example and a Python export engine. This writing workflow needs no connected account. The repository also has a Codex-compatible local marketplace entry for the existing content-engine module.
 
 Each plugin is a vertical slice of creator capability:
 - `skills/` — domain expertise, loaded when relevant tasks are detected
