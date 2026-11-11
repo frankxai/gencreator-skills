@@ -18,6 +18,7 @@ posts and picks your best moments. Treat it like any other message you send to C
 
 | You say | It does |
 |---|---|
+| "Help me record a video" | Writes the brief and slides with you, sets up OBS scenes for camera, slides and screen, runs a presenter with your notes that switches scenes and records, cuts the takes you mark as fluffed, and writes YouTube chapters |
 | "Clean up this video" | Removes long pauses (jump cuts), evens out the volume, keeps your original safe |
 | "Add captions" | Transcribes your speech locally, lets you fix names, burns in bold readable captions |
 | "Make it vertical for Reels" | Reframes to 9:16 and exports at the right size and loudness for Reels, TikTok, Shorts, LinkedIn or X |
@@ -59,6 +60,7 @@ my video setup" to confirm it works.
 
 ## Commands
 
+- `/record-video` to plan and record an episode with slides and OBS
 - `/edit-video` for everyday edits
 - `/make-shorts` to turn one long video into several shorts
 - `/post-kit` for per-platform post copy
@@ -73,6 +75,11 @@ You can also just describe what you want; you don't need the commands.
   Node.js files, `skills/video-engine/scripts/vid.mjs` and the tool server `mcp/server.mjs`, each
   with a test file.
   Nothing is minified and nothing is installed from a package registry.
+- **For recording:** OBS Studio (free, installed by you), driven by
+  `skills/studio-session/scripts/studio.mjs` through OBS's built-in WebSocket on your own computer.
+  The presenter page is served on `127.0.0.1` only. `studio.mjs obs --install` adds a Studio scene
+  collection and profile to OBS, turns on its WebSocket with a new password stored as the
+  `OBS_WS_PASSWORD` user variable, and leaves every existing OBS setting alone.
 - **Connects to:** one place, once, and only after you say yes: the speech model for captions is
   downloaded from `huggingface.co/ggerganov/whisper.cpp` into `~/.cache/video-social-studio/`.
   Nothing else goes over the network.

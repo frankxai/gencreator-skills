@@ -1,7 +1,7 @@
 {
   "name": "video-social-studio",
-  "version": "0.1.0",
-  "description": "A local video editor and social media manager for creators. Cuts pauses, adds captions, reframes for vertical, exports for Reels, TikTok, Shorts and LinkedIn, turns long videos into shorts, and writes the post for each platform. Runs on your machine with ffmpeg; nothing is uploaded.",
+  "version": "0.2.0",
+  "description": "A local video studio and social media manager for creators. Plans and records episodes with slides and OBS, cuts pauses, adds captions, reframes for vertical, exports for Reels, TikTok, Shorts and LinkedIn, turns long videos into shorts, and writes the post for each platform. Runs on your machine with ffmpeg; nothing is uploaded.",
   "author": {
     "name": "frankxai",
     "url": "https://github.com/frankxai"

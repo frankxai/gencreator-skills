@@ -1,0 +1,14 @@
+schema_version: "1.1"
+name: studio-trigger-setup-obs
+description: Should trigger studio-session.
+tags: [trigger, should-trigger]
+runs: 1
+execution:
+  prompt: "set up OBS for me so I can record a youtube video with my webcam and some slides"
+  max_turns: 6
+  allowed_tools: [Skill, Read]
+graders:
+  - name: skill-fired
+    type: tool_used
+    tool: Skill
+    input_match: '"skill"\s*:\s*"(?:[\w-]+:)?studio-session"'

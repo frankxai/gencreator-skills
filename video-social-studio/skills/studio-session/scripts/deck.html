@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Studio deck</title>
+<style>
+  :root {
+    --ink: #f4f1ea; --dim: #a39e93; --accent: #f2c14e; --panel: rgba(255,255,255,.04); --line: rgba(255,255,255,.14);
+    --mono: "Cascadia Code", "JetBrains Mono", "SF Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: #07080c; color: var(--ink); font-family: var(--mono); overflow: hidden; }
+
+  /* ---------- slide (1920x1080 canvas, scaled to fit) ---------- */
+  .stage { position: absolute; width: 1920px; height: 1080px; transform-origin: 0 0; overflow: hidden; }
+  .bg { position: absolute; inset: 0; transition: background 900ms ease; }
+  .grain { position: absolute; inset: 0; opacity: .07; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"); }
+  .content { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 56px; padding: 120px 160px; text-align: center; }
+  .layout-slidecam .content { padding-right: calc(160px + var(--pip-w)); padding-bottom: calc(80px + var(--pip-h)); }
+  .layout-talk .content { opacity: 0; }
+  h1 { font-size: 64px; font-weight: 500; letter-spacing: .01em; }
+  .quote { font-size: 76px; line-height: 1.35; max-width: 1500px; white-space: pre-wrap; }
+  .quote .typed { color: var(--accent); }
+  .quote .caret { display: inline-block; width: .08em; height: 1em; background: var(--accent); vertical-align: -0.12em; margin-left: .06em; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  ul { list-style: none; padding: 0; display: grid; gap: 22px; width: min(1200px, 100%); }
+  li { border: 1px solid var(--line); background: var(--panel); padding: 26px 34px; font-size: 38px; text-align: left; border-radius: 6px;
+    opacity: 0; transform: translateY(14px); transition: opacity 420ms ease, transform 420ms cubic-bezier(.2,.7,.2,1); }
+  li.on { opacity: 1; transform: none; }
+  .checks { grid-template-columns: repeat(2, 1fr); }
+  .checks li { opacity: 1; transform: none; display: flex; align-items: center; gap: 22px; }
+  .box { flex: none; width: 40px; height: 40px; border: 2px solid var(--dim); border-radius: 4px; display: grid; place-items: center; transition: border-color 300ms; }
+  .box::after { content: ""; width: 20px; height: 11px; border-left: 4px solid var(--accent); border-bottom: 4px solid var(--accent); transform: rotate(-45deg) scale(0); transition: transform 260ms cubic-bezier(.3,1.6,.5,1); margin-top: -6px; }
+  .checks li.on .box { border-color: var(--accent); }
+  .checks li.on .box::after { transform: rotate(-45deg) scale(1); }
+  .fade-enter { animation: enter 520ms cubic-bezier(.2,.7,.2,1); }
+  @keyframes enter { from { opacity: 0; transform: translateY(18px); } }
+  @media (prefers-reduced-motion: reduce) { *, *::after { transition: none !important; animation: none !important; } }
+
+  /* ---------- presenter ---------- */
+  .presenter { display: grid; grid-template-columns: 1.15fr 1fr; grid-template-rows: auto 1fr auto; gap: 18px; height: 100%; padding: 18px; background: #0d0f14; }
+  .bar { grid-column: 1 / -1; display: flex; align-items: center; gap: 20px; font-size: 15px; color: var(--dim); }
+  .rec { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 99px; }
+  .rec i { width: 10px; height: 10px; border-radius: 50%; background: #555; }
+  .rec.on { color: #ff6b6b; border-color: #ff6b6b; } .rec.on i { background: #ff3b3b; animation: blink 1.2s steps(1) infinite; }
+  .timer { font-size: 28px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .frame { position: relative; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #000; }
+  .frame.now { aspect-ratio: 16/9; align-self: start; }
+  .label { position: absolute; top: 8px; left: 10px; z-index: 2; font-size: 12px; color: var(--dim); background: rgba(0,0,0,.6); padding: 2px 8px; border-radius: 3px; }
+  .side { display: grid; grid-template-rows: auto 1fr; gap: 18px; min-height: 0; }
+  .frame.next { aspect-ratio: 16/9; opacity: .75; }
+  .notes { font-family: system-ui, sans-serif; font-size: clamp(22px, 2.3vw, 34px); line-height: 1.45; overflow: auto; padding: 22px 26px; border: 1px solid var(--line); border-radius: 6px; white-space: pre-wrap; }
+  .notes .meta { display: block; font-family: var(--mono); font-size: 14px; color: var(--accent); margin-bottom: 12px; }
+  .keys { grid-column: 1 / -1; display: flex; gap: 10px; flex-wrap: wrap; }
+  button { font: inherit; font-size: 15px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 16px; cursor: pointer; }
+  button:hover { border-color: var(--accent); } button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.recbtn.on { border-color: #ff6b6b; color: #ff6b6b; }
+  .pip-hint { position: absolute; border: 1px dashed rgba(242,193,78,.6); color: rgba(242,193,78,.8); font-size: 22px; display: grid; place-items: center; }
+</style>
+</head>
+<body>
+<script>
+const VIEW = /*VIEW*/;
+const SLIDES = /*SLIDES*/;
+const PIP = /*PIP*/;
+document.documentElement.style.setProperty('--pip-w', PIP.w + 'px');
+document.documentElement.style.setProperty('--pip-h', PIP.h + 'px');
+
+// Each slide gets its own light, cycling three palettes so cuts between slides read as chapters.
+const PALETTES = [
+  ['#2a1b4d', '#6b3fa0'], ['#3b1e0c', '#c4672a'], ['#0c2a22', '#2f8a63'],
+];
+const bgFor = i => { const [a, b] = PALETTES[i % PALETTES.length]; return `radial-gradient(120% 90% at 50% 115%, ${b} 0%, ${a} 38%, #07080c 72%)`; };
+const esc = s => s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function slideEl(i, build, { animate, pipHint }) {
+  const s = SLIDES[i];
+  const stage = document.createElement('div');
+  stage.className = 'stage layout-' + s.layout.replace('+', '');
+  stage.innerHTML = `<div class="bg" style="background:${bgFor(i)}"></div><div class="grain"></div><div class="content${animate ? ' fade-enter' : ''}"></div>`;
+  const c = stage.querySelector('.content');
+  if (s.title && !s.quote) c.insertAdjacentHTML('beforeend', `<h1>${esc(s.title)}</h1>`);
+  if (s.quote) c.insertAdjacentHTML('beforeend', `<p class="quote" data-text="${esc(s.quote)}"><span class="typed"></span><span class="caret"></span></p>`);
+  if (s.bullets.length) c.insertAdjacentHTML('beforeend', `<ul>${s.bullets.map((b, k) => `<li class="${k < build ? 'on' : ''}">${esc(b)}</li>`).join('')}</ul>`);
+  if (s.checks.length) c.insertAdjacentHTML('beforeend', `<ul class="checks">${s.checks.map((b, k) => `<li class="${k < build ? 'on' : ''}"><span class="box"></span>${esc(b)}</li>`).join('')}</ul>`);
+  if (s.layout === 'talk' && pipHint) c.parentElement.insertAdjacentHTML('beforeend', `<div class="pip-hint" style="inset:0">Camera full screen</div>`);
+  if (s.layout === 'slide+cam' && pipHint) stage.insertAdjacentHTML('beforeend', `<div class="pip-hint" style="right:${PIP.margin}px;bottom:${PIP.margin}px;width:${PIP.w}px;height:${PIP.h}px">camera</div>`);
+  if (s.layout === 'screen+cam' && pipHint) stage.insertAdjacentHTML('beforeend', `<div class="pip-hint" style="inset:0">Screen capture + camera</div>`);
+  return stage;
+}
+
+// Types the quote out on screen; static when typing would be a distraction (presenter, reduced motion).
+function typeQuote(stage, instant) {
+  const q = stage.querySelector('.quote'); if (!q) return;
+  const text = q.dataset.text, out = q.querySelector('.typed');
+  if (instant || matchMedia('(prefers-reduced-motion: reduce)').matches) { out.textContent = text; return; }
+  let n = 0; const tick = () => { out.textContent = text.slice(0, ++n); if (n < text.length) setTimeout(tick, text[n - 1] === ' ' ? 70 : 38); }; setTimeout(tick, 350);
+}
+
+function fit(stage, box) {
+  const r = box.getBoundingClientRect(); const k = Math.min(r.width / 1920, r.height / 1080);
+  stage.style.transform = `translate(${(r.width - 1920 * k) / 2}px, ${(r.height - 1080 * k) / 2}px) scale(${k})`;
+}
+
+let state = { i: 0, build: 0, recording: false, obs: 'off', t: 0 };
+let shown = { i: -1, build: -1 };
+
+// ---------- program view: what OBS records ----------
+function renderProgram() {
+  if (state.i === shown.i) {
+    document.querySelectorAll('.stage li').forEach((li, k) => li.classList.toggle('on', k < state.build));
+  } else {
+    document.body.replaceChildren(); const st = slideEl(state.i, state.build, { animate: true });
+    document.body.append(st); fit(st, document.body); typeQuote(st, false);
+  }
+  shown = { i: state.i, build: state.build };
+}
+
+// ---------- presenter view: what you look at ----------
+let base = 0, startedAt = 0;
+function renderPresenter() {
+  const s = SLIDES[state.i], next = SLIDES[state.i + 1];
+  if (!document.querySelector('.presenter')) {
+    document.body.innerHTML = `<div class="presenter">
+      <div class="bar"><span class="rec"><i></i><span class="rectxt">not recording</span></span><span class="timer">0:00</span><span class="pos"></span><span class="obs"></span></div>
+      <div class="frame now"><span class="label">On screen now</span></div>
+      <div class="side"><div class="frame next"><span class="label">Next</span></div><div class="notes" aria-live="polite"></div></div>
+      <div class="keys">
+        <button data-a="back">&larr; Back</button><button data-a="next">Next &rarr; / Space</button>
+        <button data-a="mark" title="Cuts back to the last slide change or mark">M &nbsp;Fluffed it, redo</button>
+        <button data-a="record" class="recbtn">R &nbsp;Record</button>
+      </div></div>`;
+    document.querySelector('.keys').addEventListener('click', e => { const a = e.target.closest('button')?.dataset.a; if (a) act(a); });
+  }
+  const now = document.querySelector('.frame.now'), nx = document.querySelector('.frame.next');
+  now.querySelectorAll('.stage').forEach(n => n.remove()); nx.querySelectorAll('.stage').forEach(n => n.remove());
+  const a = slideEl(state.i, state.build, { pipHint: true }); now.append(a); fit(a, now); typeQuote(a, true);
+  if (next) { const b = slideEl(state.i + 1, 0, { pipHint: true }); nx.append(b); fit(b, nx); typeQuote(b, true); }
+  const left = s.builds - state.build;
+  document.querySelector('.notes').innerHTML = `<span class="meta">${state.i + 1}/${SLIDES.length} &middot; ${esc(s.layout)}${left ? ` &middot; ${left} build${left > 1 ? 's' : ''} left` : ''}${s.broll.length ? ' &middot; B-roll planned' : ''}</span>${esc(s.notes || 'No notes for this slide.')}`;
+  document.querySelector('.pos').textContent = `Slide ${state.i + 1} of ${SLIDES.length}${next ? ` · next: ${next.title}` : ' · last slide'}`;
+  document.querySelector('.obs').textContent = `OBS ${state.obs}`;
+  const rec = document.querySelector('.rec'); rec.classList.toggle('on', state.recording);
+  rec.querySelector('.rectxt').textContent = state.recording ? 'recording' : 'not recording';
+  document.querySelector('.recbtn').classList.toggle('on', state.recording);
+}
+setInterval(() => {
+  const el = document.querySelector('.timer'); if (!el) return;
+  const ms = state.recording ? base + (Date.now() - startedAt) : 0; const s = Math.floor(ms / 1000);
+  el.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}, 250);
+
+const post = (p, body) => fetch(p, { method: 'POST', headers: { 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : '' });
+function act(a) {
+  const s = SLIDES[state.i];
+  if (a === 'next') { if (state.build < s.builds) post('/go', { i: state.i, build: state.build + 1 }); else if (state.i < SLIDES.length - 1) post('/go', { i: state.i + 1, build: 0 }); }
+  if (a === 'back') { if (state.build > 0) post('/go', { i: state.i, build: state.build - 1 }); else if (state.i > 0) post('/go', { i: state.i - 1, build: SLIDES[state.i - 1].builds }); }
+  if (a === 'mark') post('/mark');
+  if (a === 'record') post('/record');
+}
+if (VIEW === 'presenter') addEventListener('keydown', e => {
+  if (e.repeat || e.target.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) return;
+  const k = e.key.toLowerCase();
+  const a = { arrowright: 'next', ' ': 'next', pagedown: 'next', arrowleft: 'back', pageup: 'back', m: 'mark', r: 'record' }[k];
+  if (a) { e.preventDefault(); act(a); }
+});
+
+new EventSource('/events').onmessage = m => {
+  const was = state.recording; state = JSON.parse(m.data);
+  if (state.recording && !was) { base = state.t; startedAt = Date.now(); }
+  VIEW === 'program' ? renderProgram() : renderPresenter();
+};
+addEventListener('resize', () => { shown = { i: -1, build: -1 }; VIEW === 'program' ? renderProgram() : (document.body.innerHTML = '', renderPresenter()); });
+</script>
+</body>
+</html>
