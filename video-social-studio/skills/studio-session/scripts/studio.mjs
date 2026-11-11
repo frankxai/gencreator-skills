@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import crypto from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -389,7 +389,7 @@ function newEpisode(slug, { title, root }) {
   console.log(JSON.stringify({ episode: dir, next: 'Fill brief.md and slides.md, then: studio.mjs check <episode>' }, null, 2));
 }
 
-const slidesOf = ep => {
+export const slidesOf = ep => {
   const f = path.join(ep, 'slides.md');
   if (!fs.existsSync(f)) die(`no slides.md in ${ep}. Run studio.mjs new first.`);
   try { return parseSlides(fs.readFileSync(f, 'utf8')); } catch (e) { die(e.message); }
@@ -486,33 +486,29 @@ async function present(ep, { port, obsUrl, password, noObs, cameraName }) {
   process.on('SIGINT', () => { obs?.close(); server.close(); process.exit(0); });
 }
 
-// ---------- rough cut ----------
-const run = (bin, args) => { console.log(`> ${bin} ${args.map(a => (/[\s"]/.test(a) ? `"${a}"` : a)).join(' ')}`); const r = spawnSync(bin, args, { stdio: 'inherit' }); if (r.status !== 0) die(`${bin} failed (exit ${r.status}).`); };
-const durationMs = f => { const r = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', f], { encoding: 'utf8' }); const d = parseFloat(r.stdout); if (!d) die(`can't read the length of ${f}.`); return Math.round(d * 1000); };
+// ---------- windows: open the presenter on the screen nearest the camera ----------
+// The webcam usually sits on the main monitor, so the default is the primary screen.
+export function pickScreen(list, want) {
+  if (want) return list[Number(want) - 1] || null;
+  return list.find(s => s.primary) || list[0] || null;
+}
 
-function rough(ep, { session, video, dry }) {
-  const raw = path.join(ep, 'raw');
-  const sessions = fs.readdirSync(raw).filter(f => /^session-.*\.jsonl$/.test(f)).sort();
-  const sFile = session || (sessions.length ? path.join(raw, sessions[sessions.length - 1]) : die('no session log in raw/. Record with studio.mjs present first.'));
-  const events = readLog(sFile);
-  const logged = events.find(e => e.type === 'record' && e.outputPath)?.outputPath;
-  const vids = fs.readdirSync(raw).filter(f => /\.(mkv|mp4|mov)$/i.test(f)).map(f => path.join(raw, f)).sort((a, b) => fs.statSync(a).mtimeMs - fs.statSync(b).mtimeMs);
-  const vFile = video || (logged && fs.existsSync(logged) ? logged : vids[vids.length - 1]) || die('no recording found. Pass --video <file>.');
-  const slides = slidesOf(ep);
-  const cuts = cutsFromLog(events);
-  const dur = durationMs(vFile);
-  const keep = keepRanges(cuts, dur);
-  const ch = chapters(events, slides, cuts);
-  const slug = path.basename(ep).replace(/^\d{4}-\d{2}-\d{2}-/, '');
-  const out = path.join(ep, 'edited', `${slug}-rough.mp4`);
-  fs.writeFileSync(path.join(ep, 'publish', 'chapters.txt'), `${ch.lines.join('\n')}\n`);
-  const removed = cuts.reduce((n, [a, b]) => n + (Math.min(b, dur) - a), 0);
-  console.log(`${cuts.length} fluffed takes, ${(removed / 1000).toFixed(1)} s removed. Chapters ${ch.valid ? 'ready' : 'need at least 3 parts of 10 s+ for YouTube'}: publish/chapters.txt`);
-  if (dry) return console.log(JSON.stringify({ video: vFile, session: sFile, cuts, keep }, null, 2));
-  const parts = keep.map(([a, b], k) => `[0:v]trim=start=${a / 1000}:end=${b / 1000},setpts=PTS-STARTPTS[v${k}];[0:a]atrim=start=${a / 1000}:end=${b / 1000},asetpts=PTS-STARTPTS[a${k}]`);
-  const filter = `${parts.join(';')};${keep.map((_, k) => `[v${k}][a${k}]`).join('')}concat=n=${keep.length}:v=1:a=1[v][a]`;
-  run('ffmpeg', ['-hide_banner', '-y', '-i', vFile, '-filter_complex', filter, '-map', '[v]', '-map', '[a]', '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out]);
-  console.log(JSON.stringify({ rough: out, next: 'vid.mjs silence, then captions, then export --preset youtube; make-shorts for clips' }, null, 2));
+function screens() {
+  const ps = 'Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Screen]::AllScreens | ForEach-Object { "$($_.DeviceName)|$($_.Primary)|$($_.Bounds.X)|$($_.Bounds.Y)|$($_.Bounds.Width)|$($_.Bounds.Height)" }';
+  const r = spawnSync('powershell', ['-NoProfile', '-Command', ps], { encoding: 'utf8' });
+  return (r.stdout || '').trim().split(/\r?\n/).filter(Boolean).map(l => { const [name, primary, x, y, w, h] = l.split('|'); return { name, primary: primary === 'True', x: +x, y: +y, w: +w, h: +h }; });
+}
+
+function openPresenter({ port, screen, dry }) {
+  if (process.platform !== 'win32') die(`open http://127.0.0.1:${port}/ in your browser on the screen nearest the camera.`);
+  const list = screens();
+  const s = pickScreen(list, screen) || die(`no screen ${screen}. Screens: ${list.map((x, k) => `${k + 1}=${x.w}x${x.h}${x.primary ? ' (primary)' : ''}`).join(', ')}`);
+  const edge = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe'].find(p => fs.existsSync(p)) || die('Edge not found; open the presenter URL in any browser.');
+  // A separate small profile so the window opens where we ask, without touching her own browser.
+  const profile = path.join(process.env.LOCALAPPDATA || os.tmpdir(), 'StudioPresenter');
+  const args = [`--app=http://127.0.0.1:${port}/`, `--user-data-dir=${profile}`, `--window-position=${s.x},${s.y}`, `--window-size=${s.w},${s.h}`, '--no-first-run'];
+  console.log(JSON.stringify({ screens: list.map((x, k) => `${k + 1}: ${x.w}x${x.h} at ${x.x},${x.y}${x.primary ? ' (primary)' : ''}`), presenterOn: list.indexOf(s) + 1, command: [edge, ...args].join(' ') }, null, 2));
+  if (!dry) spawn(edge, args, { detached: true, stdio: 'ignore' }).unref();
 }
 
 // ---------- doctor ----------
@@ -530,7 +526,9 @@ function doctor() {
 
 // ---------- cli ----------
 const isMain = process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
-if (isMain) {
+// Runs in a function, not at top level: post.mjs imports this module, so this module has to finish
+// loading before post.mjs is awaited.
+async function main() {
   const argv = process.argv.slice(2);
   const flag = (n, d) => { const i = argv.indexOf(`--${n}`); return i < 0 ? d : argv[i + 1]; };
   const has = n => argv.includes(`--${n}`);
@@ -561,9 +559,22 @@ if (isMain) {
       break;
     }
     case 'present': present(ep(), { port, obsUrl: flag('obs', 'ws://127.0.0.1:4455'), password: process.env.OBS_WS_PASSWORD, noObs: has('no-obs'), cameraName: flag('camera') }); break;
-    case 'rough': rough(ep(), { session: flag('session'), video: flag('video'), dry: has('dry-run') }); break;
+    case 'windows': openPresenter({ port, screen: flag('screen'), dry: has('dry-run') }); break;
+    case 'rough': case 'finish': case 'pack': case 'study': {
+      const post = await import('./post.mjs');
+      const opts = { session: flag('session'), video: flag('video'), dry: has('dry-run'), pauses: !has('no-pauses') && (argv[0] === 'finish' || has('pauses')), db: flag('db') ? Number(flag('db')) : undefined, min: flag('min') ? Number(flag('min')) : undefined, captions: has('captions'), downloadModel: has('download-model') };
+      if (argv[0] === 'study') post.study(pos, { out: flag('out'), every: Number(flag('every', 15)) });
+      else post[argv[0]](ep(), opts);
+      break;
+    }
     default:
-      console.log('studio.mjs doctor | devices | new <slug> --title "..." | check <ep> | obs <ep> [--install] | present <ep> [--no-obs] | rough <ep> [--dry-run]\nEpisodes live in ~/Videos/Studio (override with --dir or STUDIO_DIR).');
+      console.log(`studio.mjs <command>
+  prep:    doctor | devices | new <slug> --title "..." | check <ep>
+  record:  obs <ep> [--install] | present <ep> [--no-obs] | windows [--screen N] [--dry-run]
+  after:   rough <ep> [--pauses] | finish <ep> [--captions] [--no-pauses] [--dry-run] | pack <ep>
+  learn:   study <video-url> [--out dir] [--every 15]
+Episodes live in ~/Videos/Studio (override with --dir or STUDIO_DIR).`);
       if (argv[0]) process.exit(2);
   }
 }
+if (isMain) main().catch(e => die(e.message));

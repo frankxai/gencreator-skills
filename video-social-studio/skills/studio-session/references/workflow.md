@@ -25,6 +25,20 @@ recorders on one camera; Windows gives the camera to one app at a time.
 - Turn on Do Not Disturb (Windows: Focus) and close chat apps before recording; notifications
   land in screen captures.
 
+## Stream Deck (optional)
+
+So her hands stay off the keyboard on camera. In the Stream Deck app, with the presenter window
+focused while recording:
+
+| Button | Action | Setting |
+|---|---|---|
+| Next | System > Hotkey | Right arrow |
+| Back | System > Hotkey | Left arrow |
+| Fluffed it | System > Hotkey | M |
+| Record | System > Hotkey | R (the presenter tells OBS; do not also use the OBS Record button, or the log loses its start) |
+
+The OBS plugin's own buttons (scene switch, mute mic) are fine alongside these.
+
 ## Camera, light and sound
 
 - Lens at eye level, about an arm's length away, head and shoulders filling most of the frame.
@@ -49,11 +63,12 @@ recorders on one camera; Windows gives the camera to one app at a time.
 
 ## Publish checklist
 
-1. Rough cut (`studio.mjs rough`), then `video-edit`: pauses, loudness, `export --preset youtube`.
-2. `captions` for the SRT; upload it to YouTube as a subtitle file rather than burning it into the
-   long version.
-3. Chapters from `publish/chapters.txt` go in the description (first line `0:00`).
-4. Thumbnail: `vid.mjs thumbs` gives candidates; a face plus three to five words reads at phone size.
+1. `studio.mjs finish <ep> --captions`: retakes, pauses, B-roll, YouTube export, chapters, SRT,
+   thumbnail candidates.
+2. `studio.mjs pack <ep>`: `publish/youtube.md` with titles, description and chapters. Upload the
+   SRT as a subtitle file rather than burning it into the long version.
+3. Chapters go in the description (first line `0:00`).
+4. Thumbnail: pick from `publish/thumbs/`; a face plus three to five words reads at phone size.
 5. Upload as private or unlisted, watch it through once, then publish.
 6. `shorts-from-long` for two or three clips, `social-post-kit` for each platform's text.
 7. She posts. The agent prepares files and text and never publishes for her.

@@ -23,8 +23,11 @@ The path is relative to this skill's folder. Episodes live in `~/Videos/Studio/<
 | 1 Prep | `new`, write `brief.md` and `slides.md` with her, `check` | Approves the hook, the slides and the notes; rewrites them in her own words |
 | 2 Set up (once) | `doctor`, `obs <ep> --install` | Opens OBS once, frames the camera |
 | 3 Record | `present <ep>` | Talks. Right arrow moves on, M marks a fluff, R starts and stops |
-| 4 Rough cut | `rough <ep>` | Nothing |
-| 5 Finish | hand `edited/<slug>-rough.mp4` to `video-edit` (pauses, loudness), `captions`, `shorts-from-long`, `social-post-kit` | Picks the thumbnail and title, uploads |
+| 4 Finish | `finish <ep>`, then `pack <ep>` | Drops B-roll into `broll/` before, if any |
+| 5 Publish | `shorts-from-long`, `social-post-kit` | Picks the thumbnail and title, uploads |
+
+Before step 1, `study <url>` breaks down a video she wants to learn from: transcript, chapters
+and contact sheets in `~/Videos/Studio/_study/<id>/`.
 
 Read `references/workflow.md` before step 2 the first time: tool choice, window layout, framing,
 sound, and the publish checklist.
@@ -60,7 +63,9 @@ she has not given you or that you cannot source.
 
 ## Step 3: record
 
-`studio.mjs present <ep>` starts a local page and connects to OBS.
+`studio.mjs present <ep>` starts a local page and connects to OBS. In a second terminal,
+`studio.mjs windows` opens the presenter as its own window on the primary screen (`--screen N`
+for another; `--dry-run` lists the screens).
 
 - Presenter: `http://127.0.0.1:4466/`. She opens it on the screen nearest the camera lens.
 - OBS shows the slides through the Deck browser source at `/program`.
@@ -74,18 +79,29 @@ Without OBS control (`--no-obs`), she starts recording in OBS and presses R at t
 Before the first real take, do a 10 second test and play it back: is she in frame, is the mic
 level moving, is the room lit from the front.
 
-## Step 4: rough cut
+## Step 4: finish
 
-`studio.mjs rough <ep>` cuts every fluffed stretch (from the last slide change or mark up to each
-M press), writes `edited/<slug>-rough.mp4`, and writes `publish/chapters.txt` from the slide
-titles, shifted for the cuts. YouTube needs at least three chapters of 10 seconds or more; the
-script says when that is not met. Use `--dry-run` first to show her what will be removed.
+`studio.mjs finish <ep>` does the whole edit in one cut, so chapters and B-roll stay in sync:
 
-## Step 5: finish and publish
+1. Removes every fluffed stretch (from the last slide change or mark up to each M press) and
+   every pause over 0.6 s (`--no-pauses` to keep them, `--db -40` if her room is quiet and words
+   get clipped).
+2. Lays each file in `broll/` over the start of its slide: `05-closeup.mp4` plays at slide 5 for
+   its own length (images 4 s), never past the next slide. The voice keeps running underneath.
+3. Exports `edited/<slug>-youtube.mp4` (1080p, YouTube loudness), writes `publish/chapters.txt`
+   and six thumbnail candidates in `publish/thumbs/`. `--captions` also writes the SRT (the first
+   run needs `--download-model` and her yes, since it downloads the speech model).
 
-Hand the rough cut on, in this order: `video-edit` (pauses with `silence`, then `loudness`),
-`captions`, `export --preset youtube`, then `shorts-from-long` for clips and `social-post-kit`
-for each platform's copy. She uploads; you never post for her.
+`--dry-run` first shows what will be cut and where the B-roll lands. `rough <ep>` cuts only the
+retakes (add `--pauses` for pauses), when she wants to edit the rest by hand.
+
+YouTube needs at least three chapters of 10 seconds or more; the script says when that is not met.
+
+## Step 5: publish
+
+`studio.mjs pack <ep>` writes `publish/youtube.md`: title options and hook from `brief.md`, the
+chapters, sources and credit, and the upload checklist. Then `shorts-from-long` for clips and
+`social-post-kit` for each platform's copy. She uploads and posts; you never publish for her.
 
 ## House rules
 
