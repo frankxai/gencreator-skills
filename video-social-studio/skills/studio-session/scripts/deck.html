@@ -32,7 +32,7 @@
   .checks { grid-template-columns: repeat(2, 1fr); }
   .checks li { opacity: 1; transform: none; display: flex; align-items: center; gap: 22px; }
   .box { flex: none; width: 40px; height: 40px; border: 2px solid var(--dim); border-radius: 4px; display: grid; place-items: center; transition: border-color 300ms; }
-  .box::after { content: ""; width: 20px; height: 11px; border-left: 4px solid var(--accent); border-bottom: 4px solid var(--accent); transform: rotate(-45deg) scale(0); transition: transform 260ms cubic-bezier(.3,1.6,.5,1); margin-top: -6px; }
+  .box::after { content: ""; width: 20px; height: 11px; border-left: 4px solid var(--accent); border-bottom: 4px solid var(--accent); transform: rotate(-45deg) scale(0); transition: transform 260ms cubic-bezier(.16,1,.3,1); margin-top: -6px; }
   .checks li.on .box { border-color: var(--accent); }
   .checks li.on .box::after { transform: rotate(-45deg) scale(1); }
   .fade-enter { animation: enter 520ms cubic-bezier(.2,.7,.2,1); }
