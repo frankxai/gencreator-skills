@@ -399,8 +399,16 @@ function check(ep) {
   const slides = slidesOf(ep);
   const broll = slides.flatMap(s => s.broll.map(b => `- [ ] Slide ${s.i + 1} (${s.title}): ${b}`));
   fs.writeFileSync(path.join(ep, 'broll.md'), `# B-roll list\n\nDrop files into broll/ named after the slide number, e.g. 05-closeup.mp4.\n\n${broll.join('\n') || '- none planned'}\n`);
-  for (const s of slides) console.log(`${String(s.i + 1).padStart(2)}  ${LAYOUTS[s.layout].padEnd(12)} ${s.title}${s.builds ? `  (${s.builds} builds)` : ''}${s.notes ? '' : '  [no notes]'}`);
+  const plan = planLength(slides);
+  for (const [k, s] of slides.entries()) console.log(`${String(s.i + 1).padStart(2)}  ${LAYOUTS[s.layout].padEnd(12)} ${plan.rows[k].target ? `${String(plan.rows[k].target).padStart(3)} s  ` : '        '}${s.title}${s.builds ? `  (${s.builds} builds)` : ''}${s.notes ? '' : '  [no notes]'}`);
   console.log(`\n${slides.length} slides, ${broll.length} B-roll shots -> broll.md`);
+  if (plan.targetSec) console.log(`Planned length ${Math.floor(plan.targetSec / 60)}:${String(plan.targetSec % 60).padStart(2, '0')} from the slide targets.`);
+}
+
+// "Target 90 s" in a slide's notes is its planned length.
+export function planLength(slides) {
+  const rows = slides.map(s => { const m = /target\s+(\d+)\s*s\b/i.exec(s.notes || ''); return { target: m ? Number(m[1]) : null }; });
+  return { rows, targetSec: rows.reduce((n, r) => n + (r.target || 0), 0) };
 }
 
 // ---------- present: deck server + OBS control + session log ----------
@@ -560,19 +568,19 @@ async function main() {
     }
     case 'present': present(ep(), { port, obsUrl: flag('obs', 'ws://127.0.0.1:4455'), password: process.env.OBS_WS_PASSWORD, noObs: has('no-obs'), cameraName: flag('camera') }); break;
     case 'windows': openPresenter({ port, screen: flag('screen'), dry: has('dry-run') }); break;
-    case 'rough': case 'finish': case 'pack': case 'verify': case 'study': case 'bench': {
+    case 'rough': case 'finish': case 'pack': case 'verify': case 'review': case 'study': case 'bench': {
       const post = await import('./post.mjs');
-      const opts = { session: flag('session'), video: flag('video'), dry: has('dry-run'), pauses: !has('no-pauses') && (argv[0] === 'finish' || has('pauses')), db: flag('db') ? Number(flag('db')) : undefined, min: flag('min') ? Number(flag('min')) : undefined, captions: has('captions'), downloadModel: has('download-model') };
+      const opts = { session: flag('session'), video: flag('video'), dry: has('dry-run'), pauses: !has('no-pauses') && (argv[0] === 'finish' || has('pauses')), db: flag('db') ? Number(flag('db')) : undefined, min: flag('min') ? Number(flag('min')) : undefined, captions: has('captions'), downloadModel: has('download-model'), restarts: has('restarts'), music: flag('music'), musicDb: flag('music-db') ? Number(flag('music-db')) : undefined };
       if (argv[0] === 'study') post.study(pos, { out: flag('out'), every: Number(flag('every', 15)), noVideo: has('no-video') });
       else if (argv[0] === 'bench') post.bench(pos, { out: flag('out'), noVideo: has('no-video') });
-      else post[argv[0]](ep(), opts);
+      else await post[argv[0]](ep(), opts);
       break;
     }
     default:
       console.log(`studio.mjs <command>
   prep:    doctor | devices | new <slug> --title "..." | check <ep>
   record:  obs <ep> [--install] | present <ep> [--no-obs] | windows [--screen N] [--dry-run]
-  after:   rough <ep> [--pauses] | finish <ep> [--captions] [--no-pauses] [--dry-run] | verify <ep> | pack <ep>
+  after:   review <ep> | rough <ep> [--pauses] | finish <ep> [--restarts] [--music file] [--captions] [--no-pauses] [--dry-run] | verify <ep> | pack <ep>
   learn:   study <video-url> [--no-video] [--out dir] [--every 15] | bench <urls.txt> [--no-video]
 Episodes live in ~/Videos/Studio (override with --dir or STUDIO_DIR).`);
       if (argv[0]) process.exit(2);

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseSilence, slideStarts, brollPlan, cutFilter, brollFilter, vttToParagraphs, briefSections, joinPoints, parseEbur128, loudnessVerdict, speechStats, chapterStats, benchTable } from './post.mjs';
+import { parseSilence, slideStarts, brollPlan, cutFilter, brollFilter, vttToParagraphs, briefSections, joinPoints, parseEbur128, loudnessVerdict, speechStats, chapterStats, benchTable, parseWords, findRestarts, fillerWords, packPhrases, wordsPerMinute, slideTimes, targetSec, paceNote, musicFilter, nextVersion, parseLoudnormJson, loudnessSecondPass } from './post.mjs';
 import { pickScreen } from './studio.mjs';
 
 test('parseSilence pads pauses and drops ones shorter than the padding', () => {
@@ -133,6 +133,76 @@ test('chapterStats and benchTable summarise a set of videos', () => {
   const { md, summary } = benchTable(rows);
   assert.match(md, /\| 1,000 \| 10:00 \| 170 \| 0s \| 3 \| 120s \| 8 \| A \/ B \| h \|/);
   assert.deepEqual(summary, { videos: 2, medianWpm: 170, medianCutsPerMin: 8, withChapters: 1 });
+});
+
+// The exact whisper output for a spoken test line, punctuation tokens and all.
+const WORDS = [
+  [100, 420, 'Everyone'], [420, 520, 'is'], [520, 1040, 'installing'], [1040, 1300, 'skill'], [1300, 1560, 'packs'], [1990, 3000, '.'],
+  [2971, 3501, 'Most'], [3501, 3741, 'of'], [3741, 4181, 'you'], [4181, 4971, 'should'], [4971, 5021, ','], [5021, 5091, 'um'], [5091, 5121, ','],
+  [5121, 5231, 'most'], [5231, 5281, 'of'], [5281, 5361, 'you'], [5361, 5541, 'should'], [5541, 5701, 'delete'], [5701, 5811, 'half'],
+].map(([start, end, text]) => JSON.stringify({ start, end, text })).join('\n');
+
+test('parseWords folds punctuation into the word before it', () => {
+  const w = parseWords(`${WORDS}\nnot json`);
+  assert.equal(w.length, 16);
+  assert.deepEqual(w[4], { w: 'packs.', s: 1300, e: 1560 });
+  assert.equal(w[8].w, 'should,');
+});
+
+test('findRestarts cuts the first attempt and keeps the retake', () => {
+  const r = findRestarts(parseWords(WORDS));
+  assert.equal(r.length, 1);
+  assert.deepEqual(r[0].cut, [2971, 5121]);
+  assert.equal(r[0].said, 'Most of you should, um,');
+  assert.equal(r[0].kept, 'most of you should');
+  assert.deepEqual(findRestarts(parseWords(JSON.stringify({ start: 0, end: 100, text: 'the' }) + '\n' + JSON.stringify({ start: 100, end: 200, text: 'the' }))), [], 'one repeated word is not a restart');
+});
+
+test('fillerWords, packPhrases and wordsPerMinute', () => {
+  const w = parseWords(WORDS);
+  assert.deepEqual(fillerWords(w), [{ at: 5021, w: 'um,' }]);
+  assert.deepEqual(packPhrases(w, 500).map(p => p.text), ['Everyone is installing skill packs.', 'Most of you should, um, most of you should delete half']);
+  assert.equal(wordsPerMinute(w, [[1560, 2971]]), 209, '15 words (filler excluded) over 4.3 s of talk');
+});
+
+test('slideTimes sums the time on each slide against its target', () => {
+  const slides = [{ title: 'A', notes: 'Target 20 s' }, { title: 'B', notes: 'target 90 s. Go.' }, { title: 'C', notes: '' }];
+  const ev = [{ t: 0, type: 'record', state: 'started' }, { t: 0, type: 'slide', i: 0, build: 0 }, { t: 25000, type: 'slide', i: 1, build: 0 }, { t: 40000, type: 'slide', i: 1, build: 1 }, { t: 100000, type: 'record', state: 'stopped' }];
+  assert.deepEqual(slideTimes(ev, slides, 120000), [
+    { slide: 1, title: 'A', seconds: 25, target: 20 }, { slide: 2, title: 'B', seconds: 75, target: 90 }, { slide: 3, title: 'C', seconds: 0, target: null },
+  ]);
+  assert.equal(targetSec('Target 150 s, the core'), 150);
+  assert.match(paceNote(240), /faster/);
+  assert.match(paceNote(200), /on target/);
+});
+
+test('musicFilter ducks a looped bed under the voice and fades it out', () => {
+  const f = musicFilter(3, 60000);
+  assert.match(f, /^\[ca\]asplit=2\[voice\]\[key\];\[3:a\]atrim=duration=60\.000/);
+  assert.match(f, /volume=-11dB,afade=t=out:st=58\.000:d=2\[bed\]/);
+  assert.match(f, /\[bed\]\[key\]sidechaincompress=.*\[duck\];\[voice\]\[duck\]amix=inputs=2:duration=first:normalize=0\[mix\]$/);
+});
+
+test('nextVersion never reuses a render name', () => {
+  const have = new Set(['e/x-youtube.mp4', 'e/x-youtube-v2.mp4'].map(f => f.replace(/\//g, '\\')));
+  const exists = f => have.has(f) || have.has(f.replace(/\//g, '\\'));
+  assert.equal(nextVersion('e', 'x-youtube', '.mp4', () => false), '');
+  assert.equal(nextVersion('e', 'x-youtube', '.mp4', exists), '-v3');
+});
+
+test('loudness: parse loudnorm JSON, then gain to target with a peak limiter', () => {
+  const err = `[Parsed_loudnorm_0 @ x]
+{
+	"input_i" : "-17.36",
+	"input_tp" : "-3.10",
+	"input_lra" : "4.20",
+	"input_thresh" : "-27.50",
+	"target_offset" : "0.12"
+}`;
+  const m = parseLoudnormJson(err);
+  assert.deepEqual(m, { i: '-17.36', tp: '-3.10', lra: '4.20', thresh: '-27.50', offset: '0.12' });
+  assert.equal(loudnessSecondPass(m), 'volume=3.36dB,alimiter=limit=0.7943:attack=5:release=50:level=false');
+  assert.equal(parseLoudnormJson('no json here'), null);
 });
 
 test('pickScreen defaults to the primary screen, or the one asked for', () => {

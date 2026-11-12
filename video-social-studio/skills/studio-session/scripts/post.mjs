@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readLog, cutsFromLog, mergeRanges, keepRanges, shiftTime, chapters, slidesOf } from './studio.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -129,6 +129,82 @@ export function briefSections(md) {
   return out;
 }
 
+// ---------- words: what was said, when ----------
+const FILLERS = new Set(['um', 'uh', 'erm', 'er', 'ah', 'hmm', 'mm']);
+const norm = w => w.toLowerCase().replace(/[^a-z0-9']/g, '');
+
+// ffmpeg's whisper filter with max_len=1 writes one JSON line per word (start/end in ms);
+// punctuation arrives as its own token and is folded into the word before it.
+export function parseWords(jsonl) {
+  const words = [];
+  for (const line of jsonl.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    let o; try { o = JSON.parse(line); } catch { continue; }
+    const text = String(o.text || '').trim();
+    if (!text) continue;
+    if (!/[a-z0-9]/i.test(text)) { if (words.length) words[words.length - 1].w += text; continue; }
+    words.push({ w: text, s: Math.round(o.start), e: Math.round(Math.max(o.end, o.start)) });
+  }
+  return words;
+}
+
+// Phrases: words joined until a gap of gapMs or more. The reading view of a take.
+export function packPhrases(words, gapMs = 500) {
+  const out = []; let cur = null;
+  for (const x of words) {
+    if (!cur || x.s - cur.e >= gapMs) { cur = { s: x.s, e: x.e, words: [] }; out.push(cur); }
+    cur.words.push(x.w); cur.e = Math.max(cur.e, x.e);
+  }
+  return out.map(p => ({ s: p.s, e: p.e, text: p.words.join(' ') }));
+}
+
+// A restart: the same two or more words said again within a few words, like "most of you
+// should, um, most of you should". The first attempt (and any filler before the retry) is cut,
+// the later take is kept.
+export function findRestarts(words, { minRun = 2, window = 8 } = {}) {
+  const t = words.map(x => norm(x.w));
+  const out = [];
+  for (let i = 0; i < t.length; i++) {
+    if (!t[i] || FILLERS.has(t[i])) continue;
+    for (let j = i + minRun; j <= Math.min(i + window, t.length - minRun); j++) {
+      let k = 0;
+      while (j + k < t.length && i + k < j && t[i + k] === t[j + k] && t[i + k]) k++;
+      if (k >= minRun) { out.push({ cut: [words[i].s, words[j].s], said: words.slice(i, j).map(x => x.w).join(' '), kept: words.slice(j, j + k).map(x => x.w).join(' ') }); i = j - 1; break; }
+    }
+  }
+  return out;
+}
+
+export const fillerWords = words => words.filter(x => FILLERS.has(norm(x.w))).map(x => ({ at: x.s, w: x.w }));
+
+export function wordsPerMinute(words, pauses = []) {
+  if (!words.length) return null;
+  const span = words[words.length - 1].e - words[0].s;
+  const quiet = pauses.reduce((n, [a, b]) => n + Math.max(0, Math.min(b, words[words.length - 1].e) - Math.max(a, words[0].s)), 0);
+  const talk = span - quiet;
+  return talk > 0 ? Math.round(words.filter(x => !FILLERS.has(norm(x.w))).length / (talk / 60000)) : null;
+}
+
+function modelPath() {
+  const dir = process.env.VSS_CACHE || path.join(os.homedir(), '.cache', 'video-social-studio');
+  return ['small', 'base', 'tiny'].map(m => path.join(dir, `ggml-${m}.bin`)).find(f => fs.existsSync(f)) || null;
+}
+
+// Transcribes once per recording and caches the words next to it.
+async function wordsFor(video) {
+  const cache = video.replace(/\.[^.]+$/, '.words.jsonl');
+  if (fs.existsSync(cache) && fs.statSync(cache).mtimeMs > fs.statSync(video).mtimeMs) return parseWords(fs.readFileSync(cache, 'utf8'));
+  const model = modelPath();
+  if (!model) die('no speech model yet. Run `vid.mjs captions <file> --download-model` once (it asks first), then retry.');
+  const { filterPath } = await import(pathToFileURL(VID).href);
+  if (fs.existsSync(cache)) fs.rmSync(cache);
+  run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', video, '-vn', '-af', `whisper=model=${filterPath(model)}:language=auto:queue=10:format=json:max_len=1:destination=${filterPath(cache)}`, '-f', 'null', '-']);
+  return parseWords(fs.readFileSync(cache, 'utf8'));
+}
+
+// "Target 90 s" in a slide's notes is the planned length of that slide.
+export const targetSec = notes => { const m = /target\s+(\d+)\s*s\b/i.exec(notes || ''); return m ? Number(m[1]) : null; };
+
 // ---------- take lookup ----------
 function findTake(ep, { session, video }) {
   const raw = path.join(ep, 'raw');
@@ -148,13 +224,21 @@ function pauses(vFile, db, minSec) {
 
 const slugOf = ep => path.basename(ep).replace(/^\d{4}-\d{2}-\d{2}-/, '');
 
+// '' for the first render, then '-v2', '-v3' ...
+export function nextVersion(dir, base, ext, exists = f => fs.existsSync(f)) {
+  if (!exists(path.join(dir, `${base}${ext}`))) return '';
+  for (let n = 2; ; n++) if (!exists(path.join(dir, `${base}-v${n}${ext}`))) return `-v${n}`;
+}
+
 // ---------- rough / finish ----------
-export function cutTake(ep, opts) {
+export async function cutTake(ep, opts) {
   const { sFile, events, vFile } = findTake(ep, opts);
   const slides = slidesOf(ep);
   const retakes = cutsFromLog(events);
   const quiet = opts.pauses ? pauses(vFile, opts.db ?? -35, opts.min ?? 0.6) : [];
-  const cuts = mergeRanges([...retakes, ...quiet]);
+  const restarts = opts.restarts ? findRestarts(await wordsFor(vFile)) : [];
+  for (const r of restarts) console.log(`restart cut at ${sec(r.cut[0])} s: "${r.said}" -> keeps "${r.kept}"`);
+  const cuts = mergeRanges([...retakes, ...quiet, ...restarts.map(r => r.cut)]);
   const dur = durationMs(vFile);
   const keep = keepRanges(cuts, dur);
   const total = keep.reduce((n, [a, b]) => n + b - a, 0);
@@ -165,23 +249,75 @@ export function cutTake(ep, opts) {
   return { sFile, events, vFile, cuts, keep, total };
 }
 
-export function rough(ep, opts) {
-  const t = cutTake(ep, opts);
+export async function rough(ep, opts) {
+  const t = await cutTake(ep, opts);
   if (opts.dry) return console.log(JSON.stringify({ video: t.vFile, session: t.sFile, cuts: t.cuts, keep: t.keep }, null, 2));
   const out = path.join(ep, 'edited', `${slugOf(ep)}-rough.mp4`);
   encode(t.vFile, [], `${cutFilter(t.keep)};[cv]null[v]`, out);
   console.log(JSON.stringify({ rough: out, next: 'studio.mjs finish for the full pass, or vid.mjs for single steps' }, null, 2));
 }
 
-function encode(input, broll, filter, out) {
+// Music bed: looped to length, about 11 dB under the voice, ducked further while the voice speaks,
+// faded out over the last 2 s (herk-edit-kit playbook: bed 9 to 14 dB under, ducked under speech).
+export const MUSIC_DB = -11;
+export function musicFilter(inputIndex, totalMs, db = MUSIC_DB) {
+  const d = sec(totalMs), fadeStart = Math.max(0, totalMs - 2000) / 1000;
+  return `[ca]asplit=2[voice][key];[${inputIndex}:a]atrim=duration=${d},asetpts=PTS-STARTPTS,volume=${db}dB,afade=t=out:st=${fadeStart.toFixed(3)}:d=2[bed];[bed][key]sidechaincompress=threshold=0.03:ratio=6:attack=15:release=350[duck];[voice][duck]amix=inputs=2:duration=first:normalize=0[mix]`;
+}
+
+function encode(input, broll, filter, out, { music } = {}) {
   const inputs = ['-i', input];
   for (const b of broll) inputs.push('-i', b.file); // zoompan turns a single image into its own frames
-  run('ffmpeg', ['-hide_banner', '-y', '-loglevel', 'error', '-stats', ...inputs, '-filter_complex', filter, '-map', '[v]', '-map', '[ca]',
+  if (music) inputs.push('-stream_loop', '-1', '-i', music);
+  run('ffmpeg', ['-hide_banner', '-y', '-loglevel', 'error', '-stats', ...inputs, '-filter_complex', filter, '-map', '[v]', '-map', music ? '[mix]' : '[ca]',
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out]);
 }
 
-export function finish(ep, opts) {
-  const t = cutTake(ep, { ...opts, pauses: opts.pauses !== false });
+// Two-pass loudness: measure, then correct with the measured values. A single loudnorm pass
+// undershoots on short or peaky material (it measured -17.2 LUFS against a -14 target in testing).
+export const TARGET = { lufs: -14, tp: -1.5, lra: 11 };
+export function parseLoudnormJson(stderr) {
+  const m = stderr.match(/\{[^{}]*"input_i"[^{}]*\}/);
+  if (!m) return null;
+  const j = JSON.parse(m[0]);
+  return { i: j.input_i, tp: j.input_tp, lra: j.input_lra, thresh: j.input_thresh, offset: j.target_offset };
+}
+// Second pass the way mastering does it: the measured gain to the target, then a peak limiter at
+// -2 dBFS so the louder result cannot clip. loudnorm's own linear mode refuses gain that would
+// break the peak ceiling, which left peaky speech 2.6 LU short in testing.
+const LIMIT_DB = -2;
+export const loudnessSecondPass = (m, t = TARGET) => {
+  const gain = (t.lufs - Number(m.i)).toFixed(2);
+  const limit = Math.pow(10, LIMIT_DB / 20).toFixed(4);
+  return `volume=${gain}dB,alimiter=limit=${limit}:attack=5:release=50:level=false`;
+};
+
+const measureLoudness = file => parseLoudnormJson(spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', file, '-vn', '-af', `loudnorm=I=${TARGET.lufs}:TP=${TARGET.tp}:LRA=${TARGET.lra}:print_format=json`, '-f', 'null', '-'], { encoding: 'utf8' }).stderr || '');
+const LOUDNESS_PASSES = 3;
+const LOUDNESS_TOLERANCE = 0.5;
+
+// Each pass renders from the untouched export with the gain corrected by what the last pass
+// measured, so the limiter's give-back is made up without stacking re-encodes.
+function normalizeLoudness(file) {
+  const first = measureLoudness(file);
+  if (!first) { console.warn('studio: could not measure loudness; left as exported.'); return; }
+  const pristine = file.replace(/\.mp4$/, '.pre.mp4');
+  fs.renameSync(file, pristine);
+  let measured = first, gainBase = { ...first };
+  for (let pass = 1; pass <= LOUDNESS_PASSES; pass++) {
+    run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', pristine, '-c:v', 'copy', '-af', loudnessSecondPass(gainBase), '-ar', '48000', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', file], { quiet: true });
+    measured = measureLoudness(file) || measured;
+    const off = TARGET.lufs - Number(measured.i);
+    if (Math.abs(off) <= LOUDNESS_TOLERANCE) break;
+    gainBase = { ...gainBase, i: Number(gainBase.i) - off };
+  }
+  fs.rmSync(pristine);
+  console.log(`loudness: ${first.i} LUFS as exported, ${measured.i} LUFS delivered (target ${TARGET.lufs}, peaks limited at ${LIMIT_DB} dBFS)`);
+}
+
+export async function finish(ep, opts) {
+  if (opts.music && !fs.existsSync(opts.music)) die(`can't find the music file ${opts.music}.`);
+  const t = await cutTake(ep, { ...opts, pauses: opts.pauses !== false });
   const bdir = path.join(ep, 'broll');
   const files = fs.existsSync(bdir) ? fs.readdirSync(bdir).filter(f => /\.(mp4|mov|mkv|webm|png|jpe?g|webp)$/i.test(f)).sort().map(f => path.join(bdir, f)) : [];
   const { plan, skipped } = brollPlan(files, slideStarts(t.events, t.cuts), t.total, durationMs);
@@ -190,17 +326,21 @@ export function finish(ep, opts) {
   if (opts.dry) return console.log(JSON.stringify({ video: t.vFile, cuts: t.cuts, broll: plan }, null, 2));
   const slug = slugOf(ep);
   const cut = path.join(ep, 'edited', `${slug}-cut.mp4`);
-  const final = path.join(ep, 'edited', `${slug}-youtube.mp4`);
-  encode(t.vFile, plan, `${cutFilter(t.keep)};${brollFilter(plan)}`, cut);
+  // A re-run never replaces an earlier render or captions she corrected: it writes the next version.
+  const v = nextVersion(path.join(ep, 'edited'), `${slug}-youtube`, '.mp4');
+  const final = path.join(ep, 'edited', `${slug}-youtube${v}.mp4`);
+  const audio = opts.music ? `;${musicFilter(1 + plan.length, t.total, opts.musicDb ?? MUSIC_DB)}` : '';
+  encode(t.vFile, plan, `${cutFilter(t.keep)};${brollFilter(plan)}${audio}`, cut, { music: opts.music });
   run('node', [VID, 'export', cut, '--preset', 'youtube', '--out', final]);
+  normalizeLoudness(final);
   // The edit decision list: what was kept and where B-roll sits, for verify and for a re-edit.
   fs.writeFileSync(path.join(ep, 'edited', 'edl.json'), JSON.stringify({ source: t.vFile, session: t.sFile, cuts: t.cuts, keep: t.keep, totalMs: t.total, broll: plan, final }, null, 2));
   const result = { final, chapters: path.join(ep, 'publish', 'chapters.txt') };
   if (opts.captions) {
-    result.captions = path.join(ep, 'publish', `${slug}.srt`);
+    result.captions = path.join(ep, 'publish', `${slug}${v}.srt`);
     run('node', [VID, 'captions', final, '--out', result.captions, ...(opts.downloadModel ? ['--download-model'] : [])]);
   }
-  result.thumbs = path.join(ep, 'publish', 'thumbs');
+  result.thumbs = path.join(ep, 'publish', `thumbs${v}`);
   run('node', [VID, 'thumbs', final, '--count', '6', '--out', result.thumbs]);
   console.log(JSON.stringify({ ...result, next: 'studio.mjs pack for the YouTube text; shorts-from-long for clips' }, null, 2));
 }
@@ -257,6 +397,68 @@ export function verify(ep) {
   const report = { final: edl.final, lengthMs: dur, ...loud, cuts: edl.keep.length - 1, broll: edl.broll.length, strips: strips.filter(Boolean), issues, verdict: issues.length ? 'check' : 'pass' };
   fs.writeFileSync(path.join(dir, 'report.json'), JSON.stringify(report, null, 2));
   console.log(JSON.stringify(report, null, 2));
+}
+
+// ---------- review: coach the take before cutting ----------
+export const PACE = { low: 190, high: 220 };
+
+// Seconds spent on each slide, from the session log, against the slide's "Target N s".
+export function slideTimes(events, slides, endMs) {
+  const starts = events.filter(e => e.type === 'slide' && e.build === 0);
+  return slides.map((s, i) => {
+    const mine = starts.filter(e => e.i === i);
+    let spent = 0;
+    for (const e of mine) {
+      const next = events.find(x => x.t > e.t && ((x.type === 'slide' && x.i !== i) || (x.type === 'record' && x.state === 'stopped')));
+      spent += (next ? next.t : endMs) - e.t;
+    }
+    return { slide: i + 1, title: s.title, seconds: Math.round(spent / 1000), target: targetSec(s.notes) };
+  });
+}
+
+export function paceNote(wpm) {
+  if (wpm === null) return 'no speech found';
+  if (wpm < PACE.low) return `${wpm} words/min: slower than the ${PACE.low}-${PACE.high} target. Fine if it is deliberate; tighten pauses in the cut.`;
+  if (wpm > PACE.high) return `${wpm} words/min: faster than the ${PACE.low}-${PACE.high} target. Leave a beat after key lines.`;
+  return `${wpm} words/min: on target (${PACE.low}-${PACE.high}).`;
+}
+
+export async function review(ep, opts) {
+  const { events, vFile } = findTake(ep, opts);
+  const slides = slidesOf(ep);
+  const words = await wordsFor(vFile);
+  const quiet = pauses(vFile, -35, 0.6);
+  const dur = durationMs(vFile);
+  const wpm = wordsPerMinute(words, quiet);
+  const restarts = findRestarts(words);
+  const fillers = fillerWords(words);
+  const marks = events.filter(e => e.type === 'mark').length;
+  const times = slideTimes(events, slides, dur);
+  const pauseSec = quiet.reduce((n, [a, b]) => n + b - a, 0) / 1000;
+  const fmt = ms => `${Math.floor(ms / 60000)}:${String(Math.floor(ms / 1000) % 60).padStart(2, '0')}`;
+  const md = `# Take review: ${slugOf(ep)}
+
+Recording ${fmt(dur)}, ${words.length} words. Machine transcript (whisper ${path.basename(modelPath() || '')}), so names and timings can be off by a word.
+
+## Pace
+- ${paceNote(wpm)}
+- ${quiet.length} pauses over 0.6 s, ${pauseSec.toFixed(1)} s in total (finish removes them).
+
+## Fluffs
+- ${marks} marked with M (finish cuts them).
+- ${restarts.length} unmarked restart${restarts.length === 1 ? '' : 's'} found${restarts.length ? ' (finish --restarts cuts them, keeping the later take):' : '.'}
+${restarts.map(r => `  - ${fmt(r.cut[0])} "${r.said}" -> keeps "${r.kept}"`).join('\n')}
+- ${fillers.length} fillers (${[...new Set(fillers.map(f => norm(f.w)))].join(', ') || 'none'}). Left in: cutting a filler inside a phrase clips the words around it.
+
+## Slides
+| # | Slide | Spent | Target |
+|---:|---|---:|---:|
+${times.map(t => `| ${t.slide} | ${t.title} | ${t.seconds ? `${t.seconds} s` : 'skipped'} | ${t.target ? `${t.target} s` : ''} |`).join('\n')}
+`;
+  fs.writeFileSync(path.join(ep, 'edited', 'review.md'), md);
+  fs.writeFileSync(path.join(ep, 'edited', 'takes.md'), packPhrases(words).map(p => `[${fmt(p.s)}-${fmt(p.e)}] ${p.text}`).join('\n'));
+  console.log(md);
+  return { wpm, restarts, fillers, marks, times };
 }
 
 // ---------- pack: the YouTube upload text ----------

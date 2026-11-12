@@ -85,6 +85,16 @@ Without OBS control (`--no-obs`), she starts recording in OBS and presses R at t
 Before the first real take, do a 10 second test and play it back: is she in frame, is the mic
 level moving, is the room lit from the front.
 
+## Step 3b: review the take
+
+`studio.mjs review <ep>` right after recording, before cutting. It transcribes the take once
+(cached next to the recording, using the speech model already downloaded) and writes
+`edited/review.md`: words per minute against the 190 to 220 target, pauses, fluffs she marked,
+**restarts she did not mark** ("most of you should, um, most of you should"), fillers, and the time
+spent on each slide against its `Target N s`. It also writes `edited/takes.md`, the take as
+timestamped phrases, which is the best view for choosing cuts and short clips. Read both to her in
+two or three plain sentences: what went well, the one thing to change next take.
+
 ## Step 4: finish
 
 `studio.mjs finish <ep>` does the whole edit in one cut, so chapters and B-roll stay in sync:
@@ -98,8 +108,14 @@ level moving, is the room lit from the front.
    and six thumbnail candidates in `publish/thumbs/`. `--captions` also writes the SRT (the first
    run needs `--download-model` and her yes, since it downloads the speech model).
 
+Options: `--restarts` also cuts the unmarked restarts that `review` found (the later take stays);
+`--music <file>` lays a music bed about 11 dB under the voice that ducks while she speaks and fades
+out over the last 2 s (`--music-db -14` for quieter). Use music she owns or has a licence for.
+
 Every cut gets a 30 ms audio fade so nothing pops, and still images get a slow push-in so every
-shot moves. `finish` also saves `edited/edl.json`, the list of what was kept and where B-roll sits.
+shot moves. The delivered file is brought to -14 LUFS with peaks limited at -2 dBFS, measured
+and corrected in up to three passes. A re-run never replaces an earlier render or captions she
+corrected: it writes `-v2`, `-v3` and so on. `finish` also saves `edited/edl.json`, the list of what was kept and where B-roll sits.
 
 Then `studio.mjs verify <ep>` before she watches: loudness and true peak of the delivered file,
 length against the edit list, and frame strips around every cut and the first 2.5 s in
