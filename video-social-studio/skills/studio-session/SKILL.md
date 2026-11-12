@@ -26,8 +26,14 @@ The path is relative to this skill's folder. Episodes live in `~/Videos/Studio/<
 | 4 Finish | `finish <ep>`, then `pack <ep>` | Drops B-roll into `broll/` before, if any |
 | 5 Publish | `shorts-from-long`, `social-post-kit` | Picks the thumbnail and title, uploads |
 
-Before step 1, `study <url>` breaks down a video she wants to learn from: transcript, chapters
-and contact sheets in `~/Videos/Studio/_study/<id>/`.
+Before step 1, `study <url>` breaks down a video she wants to learn from: transcript, chapters,
+contact sheets and measurements (words per minute, hook, chapter lengths, cuts per minute) in
+`~/Videos/Studio/_study/<id>/`. `bench <urls.txt>` runs it over a list and writes one comparison
+table; `--no-video` measures from captions only, which is light enough for a busy machine.
+
+**House style.** If `~/Videos/Studio/_house/STYLE.md` exists, read it before prep and before
+finish and follow it. When she gives a note on an edit ("the cut after 'first' is too quick"),
+fix the edit and add the note to that file as a dated rule, so she never gives it twice.
 
 Read `references/workflow.md` before step 2 the first time: tool choice, window layout, framing,
 sound, and the publish checklist.
@@ -91,6 +97,13 @@ level moving, is the room lit from the front.
 3. Exports `edited/<slug>-youtube.mp4` (1080p, YouTube loudness), writes `publish/chapters.txt`
    and six thumbnail candidates in `publish/thumbs/`. `--captions` also writes the SRT (the first
    run needs `--download-model` and her yes, since it downloads the speech model).
+
+Every cut gets a 30 ms audio fade so nothing pops, and still images get a slow push-in so every
+shot moves. `finish` also saves `edited/edl.json`, the list of what was kept and where B-roll sits.
+
+Then `studio.mjs verify <ep>` before she watches: loudness and true peak of the delivered file,
+length against the edit list, and frame strips around every cut and the first 2.5 s in
+`edited/verify/`. Look at the strips; a pass on numbers alone is not a pass.
 
 `--dry-run` first shows what will be cut and where the B-roll lands. `rough <ep>` cuts only the
 retakes (add `--pauses` for pauses), when she wants to edit the rest by hand.

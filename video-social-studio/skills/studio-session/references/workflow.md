@@ -61,6 +61,20 @@ The OBS plugin's own buttons (scene switch, mute mic) are fine alongside these.
   people or brands that did not agree.
 - Drop B-roll files into `broll/` named after the slide number (`05-closeup.mp4`).
 
+## Open-source editing kits (checked 2026-11-12)
+
+| Kit | Licence | What to take from it |
+|---|---|---|
+| browser-use/video-use | MIT | 30 ms fades at every cut, cut padding 30 to 200 ms, self-check at every cut boundary, a per-project memory file. Word-level cuts need an ElevenLabs key |
+| nateherkai/herk-edit-kit | not stated | Its editing playbook: measured pacing for reels, B-roll and caption rules, and the habit of turning every note into a rule. Read for ideas; the code has no licence to reuse |
+| OpenMontageInc/OpenMontage | AGPL-3.0 | Starts from a reference video, then generates footage. Suits explainers made from stock or generated clips more than a talking head. AGPL: do not copy code into this pack |
+| heygen-com/hyperframes | see repo | HTML to video for title cards, lower thirds and animated callouts |
+| m-bain/whisperX | see repo | Word-level timestamps, the base for cutting filler words exactly |
+| WyattBlue/auto-editor | see repo | Automatic silence cutting; `finish` already does this in the same pass as retakes |
+
+The two kits disagree on rendering: video-use extracts each piece and joins them, herk-edit-kit
+measured a one-frame lip-sync drift at half the joins doing that. `finish` cuts in one pass.
+
 ## Publish checklist
 
 1. `studio.mjs finish <ep> --captions`: retakes, pauses, B-roll, YouTube export, chapters, SRT,

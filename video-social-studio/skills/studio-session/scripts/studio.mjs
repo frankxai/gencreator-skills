@@ -560,10 +560,11 @@ async function main() {
     }
     case 'present': present(ep(), { port, obsUrl: flag('obs', 'ws://127.0.0.1:4455'), password: process.env.OBS_WS_PASSWORD, noObs: has('no-obs'), cameraName: flag('camera') }); break;
     case 'windows': openPresenter({ port, screen: flag('screen'), dry: has('dry-run') }); break;
-    case 'rough': case 'finish': case 'pack': case 'study': {
+    case 'rough': case 'finish': case 'pack': case 'verify': case 'study': case 'bench': {
       const post = await import('./post.mjs');
       const opts = { session: flag('session'), video: flag('video'), dry: has('dry-run'), pauses: !has('no-pauses') && (argv[0] === 'finish' || has('pauses')), db: flag('db') ? Number(flag('db')) : undefined, min: flag('min') ? Number(flag('min')) : undefined, captions: has('captions'), downloadModel: has('download-model') };
-      if (argv[0] === 'study') post.study(pos, { out: flag('out'), every: Number(flag('every', 15)) });
+      if (argv[0] === 'study') post.study(pos, { out: flag('out'), every: Number(flag('every', 15)), noVideo: has('no-video') });
+      else if (argv[0] === 'bench') post.bench(pos, { out: flag('out'), noVideo: has('no-video') });
       else post[argv[0]](ep(), opts);
       break;
     }
@@ -571,8 +572,8 @@ async function main() {
       console.log(`studio.mjs <command>
   prep:    doctor | devices | new <slug> --title "..." | check <ep>
   record:  obs <ep> [--install] | present <ep> [--no-obs] | windows [--screen N] [--dry-run]
-  after:   rough <ep> [--pauses] | finish <ep> [--captions] [--no-pauses] [--dry-run] | pack <ep>
-  learn:   study <video-url> [--out dir] [--every 15]
+  after:   rough <ep> [--pauses] | finish <ep> [--captions] [--no-pauses] [--dry-run] | verify <ep> | pack <ep>
+  learn:   study <video-url> [--no-video] [--out dir] [--every 15] | bench <urls.txt> [--no-video]
 Episodes live in ~/Videos/Studio (override with --dir or STUDIO_DIR).`);
       if (argv[0]) process.exit(2);
   }

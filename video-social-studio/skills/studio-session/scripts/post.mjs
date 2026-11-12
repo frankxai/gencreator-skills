@@ -69,17 +69,33 @@ export function brollPlan(files, starts, totalMs, durOf) {
 
 const sec = ms => (ms / 1000).toFixed(3);
 
+// A 30 ms fade at both edges of every kept piece, so no cut pops (rule from browser-use/video-use).
+// One pass over the source keeps picture and voice frame-exact; joining separately encoded pieces
+// drifts lip sync by about a frame (measured in nateherkai/herk-edit-kit).
+export const FADE_MS = 30;
 export function cutFilter(keep) {
-  const parts = keep.map(([a, b], k) => `[0:v]trim=start=${sec(a)}:end=${sec(b)},setpts=PTS-STARTPTS[v${k}];[0:a]atrim=start=${sec(a)}:end=${sec(b)},asetpts=PTS-STARTPTS[a${k}]`);
+  const parts = keep.map(([a, b], k) => {
+    const d = (b - a) / 1000, f = FADE_MS / 1000;
+    const fades = d > 4 * f ? `,afade=t=in:st=0:d=${f},afade=t=out:st=${(d - f).toFixed(3)}:d=${f}` : '';
+    return `[0:v]trim=start=${sec(a)}:end=${sec(b)},setpts=PTS-STARTPTS[v${k}];[0:a]atrim=start=${sec(a)}:end=${sec(b)},asetpts=PTS-STARTPTS${fades}[a${k}]`;
+  });
   return `${parts.join(';')};${keep.map((_, k) => `[v${k}][a${k}]`).join('')}concat=n=${keep.length}:v=1:a=1[cv][ca]`;
 }
+
+// Every shot moves: a still image gets a slow 8% push-in over its window.
+const PUSH_IN = 0.08;
+const FPS = 30;
 
 // Overlays each B-roll input (input k+1) full frame over [cv] during its window; audio stays the voice.
 export function brollFilter(plan, w = 1920, h = 1080) {
   if (!plan.length) return '[cv]null[v]';
   const chain = []; let last = 'cv';
   plan.forEach((b, k) => {
-    chain.push(`[${k + 1}:v]scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h},setsar=1,trim=duration=${sec(b.end - b.start)},setpts=PTS-STARTPTS+${sec(b.start)}/TB[b${k}]`);
+    const frames = Math.max(1, Math.round(((b.end - b.start) / 1000) * FPS));
+    const fit = b.image
+      ? `scale=${w * 2}:${h * 2}:force_original_aspect_ratio=increase,crop=${w * 2}:${h * 2},zoompan=z='1+${PUSH_IN}*on/${frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${w}x${h}:fps=${FPS}`
+      : `scale=${w}:${h}:force_original_aspect_ratio=increase,crop=${w}:${h}`;
+    chain.push(`[${k + 1}:v]${fit},setsar=1,trim=duration=${sec(b.end - b.start)},setpts=PTS-STARTPTS+${sec(b.start)}/TB[b${k}]`);
     const out = k === plan.length - 1 ? 'v' : `o${k}`;
     chain.push(`[${last}][b${k}]overlay=enable='between(t,${sec(b.start)},${sec(b.end)})':eof_action=pass[${out}]`);
     last = out;
@@ -159,7 +175,7 @@ export function rough(ep, opts) {
 
 function encode(input, broll, filter, out) {
   const inputs = ['-i', input];
-  for (const b of broll) inputs.push(...(b.image ? ['-loop', '1', '-t', sec(b.end - b.start + 500), '-i', b.file] : ['-i', b.file]));
+  for (const b of broll) inputs.push('-i', b.file); // zoompan turns a single image into its own frames
   run('ffmpeg', ['-hide_banner', '-y', '-loglevel', 'error', '-stats', ...inputs, '-filter_complex', filter, '-map', '[v]', '-map', '[ca]',
     '-c:v', 'libx264', '-preset', 'medium', '-crf', '18', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '192k', '-movflags', '+faststart', out]);
 }
@@ -177,6 +193,8 @@ export function finish(ep, opts) {
   const final = path.join(ep, 'edited', `${slug}-youtube.mp4`);
   encode(t.vFile, plan, `${cutFilter(t.keep)};${brollFilter(plan)}`, cut);
   run('node', [VID, 'export', cut, '--preset', 'youtube', '--out', final]);
+  // The edit decision list: what was kept and where B-roll sits, for verify and for a re-edit.
+  fs.writeFileSync(path.join(ep, 'edited', 'edl.json'), JSON.stringify({ source: t.vFile, session: t.sFile, cuts: t.cuts, keep: t.keep, totalMs: t.total, broll: plan, final }, null, 2));
   const result = { final, chapters: path.join(ep, 'publish', 'chapters.txt') };
   if (opts.captions) {
     result.captions = path.join(ep, 'publish', `${slug}.srt`);
@@ -185,6 +203,60 @@ export function finish(ep, opts) {
   result.thumbs = path.join(ep, 'publish', 'thumbs');
   run('node', [VID, 'thumbs', final, '--count', '6', '--out', result.thumbs]);
   console.log(JSON.stringify({ ...result, next: 'studio.mjs pack for the YouTube text; shorts-from-long for clips' }, null, 2));
+}
+
+// ---------- verify: check the delivered file before anyone watches it ----------
+// Cut points on the output timeline: where each kept piece ends and the next begins.
+export function joinPoints(keep) {
+  const out = []; let at = 0;
+  for (const [a, b] of keep.slice(0, -1)) { at += b - a; out.push(at); }
+  return out;
+}
+
+export function parseEbur128(stderr) {
+  const block = stderr.slice(stderr.lastIndexOf('Summary:'));
+  const num = re => { const m = block.match(re); return m ? parseFloat(m[1]) : null; };
+  return { lufs: num(/I:\s*(-?[\d.]+) LUFS/), truePeak: num(/Peak:\s*(-?[\d.]+) dBFS/), lra: num(/LRA:\s*(-?[\d.]+) LU/) };
+}
+
+export function loudnessVerdict({ lufs, truePeak }) {
+  const issues = [];
+  if (lufs === null) issues.push('could not measure loudness');
+  else if (lufs < -15.5 || lufs > -12.5) issues.push(`loudness ${lufs} LUFS is outside -14 +/- 1.5`);
+  if (truePeak !== null && truePeak > -1) issues.push(`true peak ${truePeak} dBFS is above -1 (may clip after upload)`);
+  return issues;
+}
+
+export function verify(ep) {
+  const edlFile = path.join(ep, 'edited', 'edl.json');
+  if (!fs.existsSync(edlFile)) die('no edited/edl.json. Run studio.mjs finish first.');
+  const edl = JSON.parse(fs.readFileSync(edlFile, 'utf8'));
+  if (!fs.existsSync(edl.final)) die(`can't find ${edl.final}.`);
+  const dir = path.join(ep, 'edited', 'verify');
+  fs.mkdirSync(dir, { recursive: true });
+  const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', edl.final, '-af', 'ebur128=peak=true', '-f', 'null', '-'], { encoding: 'utf8' });
+  const loud = parseEbur128(r.stderr || '');
+  const issues = loudnessVerdict(loud);
+  const dur = durationMs(edl.final);
+  if (Math.abs(dur - edl.totalMs) > 500) issues.push(`length ${dur} ms differs from the edit list (${edl.totalMs} ms)`);
+  // Frame strips: 4 frames around each cut, and the first 2.5 s, to look at rather than trust.
+  const strip = (name, times) => {
+    const tiles = times.filter(t => t >= 0 && t < dur).map((t, k) => {
+      const f = path.join(dir, `${name}-${k}.jpg`);
+      spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-ss', sec(t), '-i', edl.final, '-frames:v', '1', '-vf', 'scale=480:-1', f]);
+      return f;
+    }).filter(f => fs.existsSync(f));
+    if (!tiles.length) return null;
+    const out = path.join(dir, `${name}.jpg`);
+    spawnSync('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', ...tiles.flatMap(f => ['-i', f]), '-filter_complex', `${tiles.map((_, k) => `[${k}]`).join('')}hstack=inputs=${tiles.length}`, out]);
+    for (const f of tiles) fs.rmSync(f);
+    return out;
+  };
+  const strips = [strip('first-2.5s', [0, 800, 1600, 2400])];
+  joinPoints(edl.keep).forEach((t, k) => strips.push(strip(`cut-${String(k + 1).padStart(2, '0')}`, [t - 500, t - 80, t + 80, t + 500])));
+  const report = { final: edl.final, lengthMs: dur, ...loud, cuts: edl.keep.length - 1, broll: edl.broll.length, strips: strips.filter(Boolean), issues, verdict: issues.length ? 'check' : 'pass' };
+  fs.writeFileSync(path.join(dir, 'report.json'), JSON.stringify(report, null, 2));
+  console.log(JSON.stringify(report, null, 2));
 }
 
 // ---------- pack: the YouTube upload text ----------
@@ -225,7 +297,40 @@ ${fs.existsSync(thumbs) ? `Candidates in publish/thumbs/. Pick one face frame an
 }
 
 // ---------- study: break down a reference video ----------
-export function study(url, { out, every = 15 }) {
+const HOOK_SEC = 15;
+
+// Speech numbers from the WebVTT captions: words per minute, the hook, talk time.
+export function speechStats(vtt) {
+  const cues = []; let last = '';
+  for (const block of vtt.replace(/\r\n/g, '\n').split(/\n\n+/)) {
+    const m = block.match(/^(\d\d):(\d\d):(\d\d)\.(\d+) --> (\d\d):(\d\d):(\d\d)/m); if (!m) continue;
+    const text = block.split('\n').slice(1).map(l => l.replace(/<[^>]+>/g, '').trim()).filter(Boolean).pop() || '';
+    if (!text || text === last) continue; last = text;
+    cues.push({ s: +m[1] * 3600 + +m[2] * 60 + +m[3], e: +m[5] * 3600 + +m[6] * 60 + +m[7], text });
+  }
+  const words = cues.reduce((n, c) => n + c.text.split(/\s+/).filter(Boolean).length, 0);
+  const span = cues.length ? cues[cues.length - 1].e - cues[0].s : 0;
+  return {
+    words, speechSec: span, wpm: span ? Math.round(words / (span / 60)) : null,
+    hook: cues.filter(c => c.s < HOOK_SEC).map(c => c.text).join(' '),
+    firstWordSec: cues[0]?.s ?? null,
+  };
+}
+
+export function chapterStats(chapters, durationSec) {
+  if (!chapters?.length) return { count: 0, medianSec: null, firstAfterIntroSec: null };
+  const lens = chapters.map((c, k) => (chapters[k + 1]?.[0] ?? durationSec) - c[0]).sort((a, b) => a - b);
+  return { count: chapters.length, medianSec: lens[Math.floor(lens.length / 2)], firstAfterIntroSec: chapters[1]?.[0] ?? null };
+}
+
+// Hard cuts per minute from scene changes, on a small copy of the picture to stay light.
+function cutsPerMinute(video, durationSec) {
+  const r = spawnSync('ffmpeg', ['-hide_banner', '-nostats', '-i', video, '-an', '-vf', "scale=320:-2,select='gt(scene,0.32)',showinfo", '-f', 'null', '-'], { encoding: 'utf8' });
+  const n = ((r.stderr || '').match(/\bpts_time:/g) || []).length;
+  return durationSec ? +(n / (durationSec / 60)).toFixed(1) : null;
+}
+
+export function study(url, { out, every = 15, noVideo = false }) {
   if (!/^https:\/\//.test(url || '')) die('give a full https:// video URL.', 2);
   if (spawnSync('uvx', ['--version'], { encoding: 'utf8' }).status !== 0) die('study needs uv (it runs yt-dlp without installing it). Install: winget install astral-sh.uv');
   const id = (url.match(/(?:v=|youtu\.be\/|shorts\/)([\w-]{11})/) || [])[1] || url.replace(/\W+/g, '-').slice(-40);
@@ -237,17 +342,45 @@ export function study(url, { out, every = 15 }) {
   const findVtt = () => fs.readdirSync(dir).find(f => f.endsWith('.vtt'));
   yt(['--skip-download', '--write-info-json', '--write-auto-subs', '--write-subs', '--sub-langs', 'en-orig', '--sub-format', 'vtt', '-o', 'v.%(ext)s']);
   if (!findVtt()) yt(['--skip-download', '--write-auto-subs', '--write-subs', '--sub-langs', 'en', '--sub-format', 'vtt', '--sleep-subtitles', '5', '-o', 'v.%(ext)s']);
-  yt(['-f', 'bv*[height<=480]+ba/b', '--merge-output-format', 'mp4', '-o', 'video.%(ext)s']);
+  if (!noVideo) yt(['-f', 'bv*[height<=480]+ba/b', '--merge-output-format', 'mp4', '-o', 'video.%(ext)s']);
   const vtt = findVtt();
-  if (vtt) fs.writeFileSync(path.join(dir, 'transcript.md'), vttToParagraphs(fs.readFileSync(path.join(dir, vtt), 'utf8')));
+  const vttText = vtt ? fs.readFileSync(path.join(dir, vtt), 'utf8') : '';
+  if (vtt) fs.writeFileSync(path.join(dir, 'transcript.md'), vttToParagraphs(vttText));
   const info = fs.existsSync(path.join(dir, 'v.info.json')) ? JSON.parse(fs.readFileSync(path.join(dir, 'v.info.json'), 'utf8')) : {};
-  const meta = { url, title: info.title, channel: info.channel, duration: info.duration_string, uploaded: info.upload_date, views: info.view_count, chapters: (info.chapters || []).map(c => [Math.round(c.start_time), c.title]) };
+  const meta = { url, title: info.title, channel: info.channel, duration: info.duration_string, durationSec: info.duration, uploaded: info.upload_date, views: info.view_count, chapters: (info.chapters || []).map(c => [Math.round(c.start_time), c.title]) };
   fs.writeFileSync(path.join(dir, 'meta.json'), JSON.stringify(meta, null, 2));
   const video = path.join(dir, 'video.mp4');
+  const metrics = { speech: vtt ? speechStats(vttText) : null, chapters: chapterStats(meta.chapters, meta.durationSec), cutsPerMin: null };
   if (fs.existsSync(video)) {
     run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-i', video, '-vf', `fps=1/${every},scale=640:-1`, path.join(dir, 'frames', 't_%03d.jpg')]);
     run('ffmpeg', ['-hide_banner', '-loglevel', 'error', '-y', '-framerate', '1', '-i', path.join(dir, 'frames', 't_%03d.jpg'), '-vf', 'scale=400:-1,tile=4x4:padding=4', path.join(dir, 'sheet_%d.jpg')]);
+    metrics.cutsPerMin = cutsPerMinute(video, meta.durationSec);
   }
+  fs.writeFileSync(path.join(dir, 'metrics.json'), JSON.stringify(metrics, null, 2));
   const sheets = fs.readdirSync(dir).filter(f => /^sheet_\d+\.jpg$/.test(f));
-  console.log(JSON.stringify({ study: dir, ...meta, transcript: Boolean(vtt), sheets: sheets.length, frameEvery: `${every}s`, next: 'Read transcript.md and the sheets in order; each sheet tile is one frame, left to right, top to bottom.' }, null, 2));
+  console.log(JSON.stringify({ study: dir, title: meta.title, views: meta.views, transcript: Boolean(vtt), sheets: sheets.length, metrics }, null, 2));
+  return { dir, meta, metrics };
+}
+
+// ---------- bench: compare many reference videos ----------
+export function benchTable(rows) {
+  const head = '| Views | Length | Words/min | First word | Chapters | Median chapter | Cuts/min | Title | Hook (first 15 s) |\n|---:|---:|---:|---:|---:|---:|---:|---|---|';
+  const f = v => (v === null || v === undefined ? '' : v);
+  const body = rows.map(({ meta: m, metrics: x }) => `| ${f(m.views?.toLocaleString('en-US'))} | ${f(m.duration)} | ${f(x.speech?.wpm)} | ${x.speech?.firstWordSec != null ? `${x.speech.firstWordSec}s` : ''} | ${x.chapters.count} | ${x.chapters.medianSec != null ? `${Math.round(x.chapters.medianSec)}s` : ''} | ${f(x.cutsPerMin)} | ${(m.title || '').replace(/\|/g, '/')} | ${(x.speech?.hook || '').replace(/\|/g, '/').slice(0, 160)} |`);
+  const nums = k => rows.map(k).filter(v => typeof v === 'number').sort((a, b) => a - b);
+  const median = a => (a.length ? a[Math.floor(a.length / 2)] : null);
+  const summary = { videos: rows.length, medianWpm: median(nums(r => r.metrics.speech?.wpm)), medianCutsPerMin: median(nums(r => r.metrics.cutsPerMin)), withChapters: rows.filter(r => r.metrics.chapters.count).length };
+  return { md: `${head}\n${body.join('\n')}`, summary };
+}
+
+export function bench(listFile, { out, noVideo }) {
+  if (!listFile || !fs.existsSync(listFile)) die('give a text file with one video URL per line.', 2);
+  const urls = fs.readFileSync(listFile, 'utf8').split(/\r?\n/).map(l => l.trim()).filter(l => /^https:\/\//.test(l));
+  const root = path.resolve(out || path.join(os.homedir(), 'Videos', 'Studio', '_study'));
+  const rows = urls.map(u => study(u, { noVideo, out: undefined, every: 30 })).filter(r => r.meta.title);
+  const { md, summary } = benchTable(rows);
+  const file = path.join(root, `benchmark-${new Date().toISOString().slice(0, 10)}.md`);
+  fs.mkdirSync(root, { recursive: true });
+  fs.writeFileSync(file, `# Reference benchmark\n\n${summary.videos} videos. Median ${summary.medianWpm ?? '?'} words/min${summary.medianCutsPerMin != null ? `, ${summary.medianCutsPerMin} cuts/min` : ''}; ${summary.withChapters} use chapters.\n${noVideo ? '\nCaptions and metadata only (run without --no-video for cuts per minute).\n' : ''}\n${md}\n`);
+  console.log(JSON.stringify({ benchmark: file, ...summary }, null, 2));
 }
