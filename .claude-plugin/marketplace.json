@@ -18,7 +18,7 @@
     {
       "name": "video-social-studio",
       "source": "./video-social-studio",
-      "description": "Video editor + social media manager for creators: jump cuts, local captions, vertical reframing, platform exports, long-to-shorts, and per-platform post packages. Needs ffmpeg."
+      "description": "Video studio + social media manager for creators: plan and record with slides and OBS, jump cuts, local captions, vertical reframing, platform exports, long-to-shorts, and per-platform post packages. Needs ffmpeg."
     },
     {
       "name": "visual-studio",

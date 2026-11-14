@@ -1,0 +1,16 @@
+schema_version: "1.1"
+name: studio-no-trigger-podcast-reels
+description: "Should NOT trigger studio-session."
+tags: [trigger, should-not-trigger]
+runs: 1
+execution:
+  prompt: "turn my finished podcast episode into five vertical reels"
+  max_turns: 4
+  allowed_tools: [Skill, Read]
+graders:
+  - name: skill-not-fired
+    type: tool_used
+    tool: Skill
+    input_match: '"skill"\s*:\s*"(?:[\w-]+:)?studio-session"'
+    min: 0
+    max: 0
