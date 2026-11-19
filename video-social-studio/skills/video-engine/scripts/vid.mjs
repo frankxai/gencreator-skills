@@ -150,7 +150,8 @@ export const marginFor = position => (position === 'middle' ? 'Alignment=5,Margi
 // matter how it is escaped across ffmpeg builds. A rooted path without the drive resolves
 // against the current drive, which removes the colon entirely; other drives fall back to escaping.
 export function filterPath(p, cwd = process.cwd()) {
-  const abs = path.resolve(p).replace(/\\/g, '/');
+  const resolver = /^[A-Za-z]:[\\/]/.test(cwd) ? path.win32 : path;
+  const abs = resolver.resolve(cwd, p).replace(/\\/g, '/');
   const drive = /^([A-Za-z]):\//.exec(abs);
   if (!drive) return abs.replace(/:/g, '\\:');
   const cwdDrive = /^([A-Za-z]):/.exec(cwd);
