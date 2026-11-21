@@ -1,3 +1,7 @@
+---
+description: Build a component from a design brief, Figma URL or description and check design-system compliance.
+---
+
 # /design-build — Build Component from Design Brief
 
 Create a new component from a design brief, Figma URL, or description. Enforces full design system compliance.

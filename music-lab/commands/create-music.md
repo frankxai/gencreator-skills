@@ -1,3 +1,7 @@
+---
+description: Develop a music idea into a structured Suno prompt and production workflow.
+---
+
 # /create-music - Guided Suno Music Creation
 
 **ACOS Vibe OS Music Pipeline - From idea to published track**

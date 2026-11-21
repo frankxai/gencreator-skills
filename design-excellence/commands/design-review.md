@@ -1,3 +1,7 @@
+---
+description: Review a page, component or design system for design quality.
+---
+
 # /design-review — Design Excellence Review
 
 Run a comprehensive design quality review on a target (page, component, or full system).

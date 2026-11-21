@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "dimension": "installer-roundtrip",
+  "sourceRevision": "756296a87e4d13ee8cb74644a2527c9a6c856761",
+  "observedAt": "2026-11-19T03:00:14.046363+00:00",
+  "installerVersion": "1.9.0",
+  "profileSha256": "c4c2910fac9a05086a9918169906116a94647228faaeb82d0776777f23307741",
+  "results": [
+    {
+      "skill": "video-engine",
+      "target": "codex",
+      "fileCount": 4,
+      "entrypointSha256": "1f5b4adbf3486089c183f2463e40283209a2359fb2af4753888b32b2ec5c3cbb",
+      "payload": "pass",
+      "scopedRemoval": "pass",
+      "projectClean": true,
+      "status": "pass"
+    },
+    {
+      "skill": "video-engine",
+      "target": "claude-code",
+      "fileCount": 4,
+      "entrypointSha256": "1f5b4adbf3486089c183f2463e40283209a2359fb2af4753888b32b2ec5c3cbb",
+      "payload": "pass",
+      "scopedRemoval": "pass",
+      "projectClean": true,
+      "status": "pass"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "sourceRoot": "video-social-studio",
+  "skills": [
+    "skills/video-engine"
+  ],
+  "targets": [
+    "codex",
+    "claude-code"
+  ]
+}
